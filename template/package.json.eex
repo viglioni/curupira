@@ -1,0 +1,27 @@
+{
+  "name": "<%= @project_name_camel_case %>",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "webpack",
+    "dev": "webpack-dev-server --live-reload",
+    "test": "jest --config jest.config.js"
+  },
+  "dependencies": {
+    "babel-core": "^6.26.3",
+    "babel-loader": "^9.2.1",
+    "babel-preset-env": "^1.7.0",
+    "css-loader": "^7.1.2",
+    "start-server-webpack-plugin": "^2.2.5",
+    "style-loader": "^4.0.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-node-externals": "^3.0.0"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^13.0.0",
+    "html-webpack-plugin": "^5.6.3",
+    "sass": "^1.81.0",
+    "sass-loader": "^16.0.3",
+    "webpack": "^5.96.1",
+    "webpack-dev-server": "^5.2.1"
+  }
+}
