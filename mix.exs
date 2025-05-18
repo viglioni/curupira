@@ -1,4 +1,4 @@
-defmodule ElixirFrontendTemplate.MixProject do
+defmodule Curupira.MixProject do
   use Mix.Project
 
   def project do
