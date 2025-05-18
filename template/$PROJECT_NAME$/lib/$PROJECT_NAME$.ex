@@ -5,6 +5,6 @@ defmodule <%= @project_name_camel_case %> do
 	
 	@spec main() :: atom()
 	def main do
-	  Console.log("Hello there!")
+	  Console.log("It's working!")
 	end
 end

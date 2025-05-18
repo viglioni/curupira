@@ -1,0 +1,28 @@
+#+title: <%= @project_name_camel_case %>
+
+
+First you need to install everything, inside your project:
+
+#+begin_src shell :exports both :results output 
+  mix deps.get
+  npm i # yes, of course you must have npm installed
+#+end_src
+
+Then
+
+#+begin_src shell :exports both :results output 
+  mix watch.compile # this will open your project on the port on config.exs
+  # this will watch your elixir files for changes and then compile.
+  # might get slow if your project gets too big... in this case you can run the `mix compile` manually and only run the frontend with `npm run dev`
+#+end_src
+
+Unfortunatelly, when you kill the =watch.compile= it does not kill the frontend project, to do that you can use =mix port.kill=.
+
+
+The frontend project will execute the function = =<%= @project_name_camel_case %>.main()=
+
+You can add the styles in =styles/main.scss=
+
+All html files in =html/=.
+
+If you need to add extra JS, check =js/index.js=.

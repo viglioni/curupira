@@ -1,4 +1,2 @@
 %{
-  "mix_templates": {:hex, :mix_templates, "0.2.3", "8252e12a21a8f9cc917e7dd834b131ec0025fa23d2f15e5d4a06f0215f5b698b", [:mix], [{:private, "> 0.0.0", [hex: :private, repo: "hexpm", optional: false]}], "hexpm", "ab16bc4582e12ec0de07146e2e4988b17b3d762d256a1ef219779e9f5cf89b62"},
-  "private": {:hex, :private, "0.1.2", "da4add9f36c3818a9f849840ca43016c8ae7f76d7a46c3b2510f42dcc5632932", [:mix], [], "hexpm", "22ee01c3f450cf8d135da61e10ec59dde006238fab1ea039014791fc8f3ff075"},
 }

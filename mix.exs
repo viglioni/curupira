@@ -3,8 +3,8 @@ defmodule ElixirFrontendTemplate.MixProject do
 
   def project do
     [
-      app: :elixir_frontend_template,
-      version: "0.1.0",
+      app: :curupira,
+      version: "0.0.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -20,8 +20,6 @@ defmodule ElixirFrontendTemplate.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
-    [
-      {:mix_templates, "~> 0.2", runtime: false}
-    ]
+    []
   end
 end

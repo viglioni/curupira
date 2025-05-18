@@ -12,8 +12,7 @@ defmodule <%= @project_name_camel_case %>.MixProject do
       # Our elixir_script configuration
       elixir_script: [
         # Entry module. Can also be a list of modules
-        input: Elixirjs,
-        # Output path. Either a path to a js file or a directory
+        input: <%= @project_name_camel_case %>,
         output: "js"
       ]
     ]
