@@ -1,0 +1,185 @@
+#+title: CurupiraScript Test Suite
+#+date: 2025-11-27
+
+* Test Organization
+
+** Test-Driven Development (TDD) Approach
+
+This test suite is organized to support TDD:
+
+1. *Phase 0 tests* - Tests that pass NOW (basic API, error handling)
+2. *Phase 1 tests* - Tests tagged with =:phase1= that guide implementation
+3. *Skipped tests* - Tests tagged with =:skip= for future features
+
+** Running Tests
+
+#+begin_src shell
+# Run all tests (will show Phase 1 failures)
+mix test
+
+# Run only current phase tests (all should pass)
+mix test --exclude phase1
+
+# Run Phase 1 tests only (to guide implementation)
+mix test --only phase1
+
+# Run specific test file
+mix test test/curupira_script_test.exs
+
+# Run specific test by line number
+mix test test/curupira_script_test.exs:42
+#+end_src
+
+** Test Coverage
+
+#+begin_src shell
+# Generate coverage report
+mix coveralls
+
+# Generate HTML coverage report
+mix coveralls.html
+# Open coverage/excoveralls.html in browser
+#+end_src
+
+* Test Categories
+
+** 1. version/0
+- [X] Returns version string
+- [X] Semantic version format
+
+** 2. compile/2 - Basic API
+- [X] Accepts single module
+- [X] Accepts list of modules
+- [X] Accepts empty options
+
+** 3. compile/2 - Options Handling (Phase 0 - Skipped)
+- [ ] Output option
+- [ ] Source maps option
+- [ ] Format option
+- [ ] Multiple options
+
+** 4. compile/2 - Input Validation (Phase 0 - Skipped)
+- [ ] Error for non-module atom
+- [ ] Error for nil
+- [ ] Error for non-atom in list
+- [ ] Error for empty module list
+- [ ] Error for invalid options
+
+** 5. compile/2 - Success Response (Phase 1)
+- [ ] Returns {:ok, result} on success
+- [ ] Result contains compiled_modules
+- [ ] Result contains output_files
+- [ ] Result contains JavaScript code
+
+** 6. compile/2 - JavaScript Generation (Phase 1)
+- [ ] Generates ES module format
+- [ ] Generates function for module function
+- [ ] Handles string interpolation
+- [ ] Handles multiple functions
+
+** 7. compile/2 - Multiple Modules (Phase 1)
+- [ ] Compiles multiple modules
+- [ ] Generates separate files per module
+
+** 8. compile/2 - Output Directory (Phase 1)
+- [ ] Uses default output directory
+- [ ] Uses custom output directory
+
+** 9. compile/2 - Source Maps (Phase 1)
+- [ ] Generates source maps by default in dev
+- [ ] Can disable source maps
+- [ ] Source map references original Elixir file
+
+** 10. compile/2 - Error Handling (Phase 1)
+- [ ] Returns error for syntax errors
+- [ ] Returns error with line information
+
+** 11. compile/2 - Data Types (Phase 1)
+- [ ] Compiles integers
+- [ ] Compiles floats
+- [ ] Compiles strings
+- [ ] Compiles atoms using Symbol.for()
+- [ ] Compiles lists as arrays
+
+** 12. compile/2 - Pattern Matching (Phase 1)
+- [ ] Compiles pattern matching functions
+- [ ] Handles multiple function clauses
+
+** 13. compile/2 - Control Flow (Phase 1)
+- [ ] Compiles if/else
+- [ ] Compiles case expressions
+- [ ] Compiles guards
+
+** 14. compile/2 - Pipe Operator (Phase 1)
+- [ ] Compiles pipe operator
+
+* Test Modules
+
+The test file includes helper modules for testing compilation:
+
+#+begin_src elixir
+defmodule CurupiraScriptTest.Simple do
+  def hello, do: "world"
+end
+
+defmodule CurupiraScriptTest.WithArgs do
+  def greet(name), do: "Hello, #{name}!"
+end
+
+defmodule CurupiraScriptTest.DataTypes do
+  def integers, do: 42
+  def floats, do: 3.14
+  def strings, do: "hello"
+  def atoms, do: :ok
+  def lists, do: [1, 2, 3]
+  def tuples, do: {1, 2}
+  def maps, do: %{key: "value"}
+end
+
+defmodule CurupiraScriptTest.PatternMatch do
+  def first([head | _tail]), do: head
+  def is_empty?([]), do: true
+  def is_empty?(_), do: false
+end
+#+end_src
+
+* Adding New Tests
+
+When adding tests:
+
+1. *Phase 0 tests* - No tags, should pass immediately
+2. *Phase 1 tests* - Add =@tag :phase1= above the test
+3. *Future tests* - Add =@tag :skip= above the test
+
+Example:
+
+#+begin_src elixir
+describe "new feature" do
+  # Current phase - should pass
+  test "basic behavior" do
+    assert true
+  end
+
+  # Phase 1 - guides implementation
+  @tag :phase1
+  test "advanced behavior" do
+    assert {:ok, _} = CurupiraScript.some_feature()
+  end
+
+  # Future - not ready yet
+  @tag :skip
+  test "experimental behavior" do
+    assert {:ok, _} = CurupiraScript.future_feature()
+  end
+end
+#+end_src
+
+* Test Status
+
+| Phase   | Passing | Failing | Skipped | Total |
+|---------+---------+---------+---------+-------|
+| Phase 0 |       5 |       0 |       9 |    14 |
+| Phase 1 |       0 |      28 |       0 |    28 |
+| Total   |       5 |      28 |       9 |    42 |
+
+*Last Updated:* 2025-11-27

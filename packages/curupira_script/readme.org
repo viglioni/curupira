@@ -120,6 +120,30 @@ mix dialyzer
 mix format
 #+end_src
 
+*** Test-Driven Development
+
+This project uses TDD with tests organized by implementation phase:
+
+#+begin_src shell
+# Run all tests (shows Phase 1 failures for guidance)
+mix test
+
+# Run only current phase tests (all should pass ✅)
+mix test --exclude phase1
+
+# Run Phase 1 tests only (guides implementation)
+mix test --only phase1
+
+# Generate coverage report
+mix coveralls.html
+#+end_src
+
+*Test Status:*
+- Phase 0: 5 passing, 9 skipped (options validation)
+- Phase 1: 28 tests ready (guide implementation)
+
+See [[file:test/README.org][test/README.org]] for detailed test organization.
+
 *** Project Structure
 
 #+begin_example
