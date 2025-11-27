@@ -75,6 +75,21 @@ Contains:
 
 Format: Org mode (Emacs org-mode compatible)
 
+** [[file:expectations.org][expectations.org]] 🎯 WHAT WE'RE BUILDING
+
+User expectations and real-world use cases.
+
+Contains:
+- Primary goal: Pure Elixir frontend apps
+- Struct-based browser APIs (CRITICAL)
+- Real-world TodoMVC example
+- Package responsibilities
+- Success criteria
+
+Format: Org mode
+
+*Read this to understand the vision!*
+
 * Reading Order for New Sessions
 
 1. *First time ever:* Read all files in order

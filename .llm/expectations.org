@@ -1,0 +1,588 @@
+#+title: Curupira Expectations & Use Cases
+#+author: Curupira Team
+#+date: 2025-11-27
+#+startup: content
+
+* Primary Goal
+
+Write frontend applications in *pure Elixir* - zero JavaScript required.
+
+User writes Elixir, Curupira handles all the JavaScript transpilation and browser API wrapping.
+
+* Core Philosophy
+
+** Write Only Elixir
+
+#+begin_src elixir
+# User writes this - pure Elixir
+defmodule MyApp do
+  alias CurupiraWeb.{Document, Element}
+
+  def main do
+    Document.get_element_by_id("app")
+    |> Element.set_text("Hello from Elixir!")
+    |> Element.add_class("active")
+  end
+end
+#+end_src
+
+#+begin_src javascript
+// Curupira generates this - user never sees it
+import { Document, Element } from 'curupira-web';
+
+export default {
+  main() {
+    const app = Document.getElementById('app');
+    Element.setText(app, 'Hello from Elixir!');
+    Element.addClass(app, 'active');
+  }
+};
+#+end_src
+
+** Everything Returns Elixir Structs
+
+Critical: Browser APIs must return Elixir structs, not raw JS objects.
+
+*** Bad (Raw JS):
+#+begin_src elixir
+# Returns raw JS object - can't pattern match!
+elem = Document.get_element_by_id("foo")
+# What is elem? Unknown shape!
+#+end_src
+
+*** Good (Elixir Structs):
+#+begin_src elixir
+# Returns proper Elixir struct
+%Element{id: "foo", tag_name: "div", class_list: classes} =
+  Document.get_element_by_id("foo")
+
+# Can pattern match!
+def handle_element(%Element{tag_name: "button"} = btn) do
+  Element.set_disabled(btn, true)
+end
+
+# Can pipe!
+Document.get_element_by_id("submit")
+|> Element.set_text("Click me")
+|> Element.add_class("btn-primary")
+|> Element.add_event_listener("click", &handle_click/1)
+#+end_src
+
+* Package Responsibilities
+
+** curupira_script (Core Transpiler)
+
+*Purpose:* Compile Elixir → JavaScript
+
+*Must Support:*
+
+*** Structs (CRITICAL!)
+
+#+begin_src elixir
+defmodule User do
+  defstruct [:name, :age, :email]
+end
+
+%User{name: "Alice", age: 30, email: "alice@example.com"}
+#+end_src
+
+Compiles to:
+#+begin_src javascript
+class User {
+  constructor(fields = {}) {
+    this.__struct__ = Symbol.for("Elixir.User");
+    this.name = fields.name ?? null;
+    this.age = fields.age ?? null;
+    this.email = fields.email ?? null;
+    Object.freeze(this);
+  }
+}
+
+new User({name: "Alice", age: 30, email: "alice@example.com"})
+#+end_src
+
+*** Pattern Matching on Structs
+
+#+begin_src elixir
+def greet(%User{name: name, age: age}) when age >= 18 do
+  "Hello, #{name}!"
+end
+#+end_src
+
+*** Pipe Operator
+
+#+begin_src elixir
+data
+|> transform()
+|> validate()
+|> save()
+#+end_src
+
+*** All Basic Types
+
+- Atoms, strings, integers, floats
+- Lists, maps, tuples
+- Structs
+- Comprehensions
+- Guards
+
+*** NOT Supporting
+
+- ❌ Macros (use pre-expanded AST)
+- ❌ Protocols (maybe later)
+- ❌ OTP (GenServer, etc.)
+- ❌ Processes (spawn/receive)
+
+** curupira_web (Browser API Wrappers)
+
+*Purpose:* Wrap browser APIs in Elixir-friendly structs
+
+*Provides:*
+
+*** DOM Manipulation
+
+#+begin_src elixir
+defmodule CurupiraWeb.Element do
+  defstruct [
+    :id,
+    :tag_name,
+    :class_list,
+    :text_content,
+    :attributes,
+    :children,
+    :_js_ref  # Internal reference to actual DOM element
+  ]
+
+  @spec set_text(Element.t(), String.t()) :: Element.t()
+  def set_text(%Element{} = elem, text) do
+    # Updates DOM and returns new struct
+  end
+
+  @spec add_class(Element.t(), String.t()) :: Element.t()
+  def add_class(%Element{} = elem, class) do
+    # Updates DOM and returns new struct
+  end
+
+  @spec add_event_listener(Element.t(), String.t(), function()) :: Element.t()
+  def add_event_listener(%Element{} = elem, event_type, handler) do
+    # Attaches handler, returns struct
+  end
+end
+#+end_src
+
+*** Document API
+
+#+begin_src elixir
+defmodule CurupiraWeb.Document do
+  @spec get_element_by_id(String.t()) :: Element.t() | nil
+  def get_element_by_id(id)
+
+  @spec query_selector(String.t()) :: Element.t() | nil
+  def query_selector(selector)
+
+  @spec query_selector_all(String.t()) :: [Element.t()]
+  def query_selector_all(selector)
+
+  @spec create_element(String.t()) :: Element.t()
+  def create_element(tag_name)
+end
+#+end_src
+
+*** Events
+
+#+begin_src elixir
+defmodule CurupiraWeb.Event do
+  defstruct [
+    :type,           # "click", "submit", etc.
+    :target,         # Element struct
+    :current_target, # Element struct
+    :timestamp,
+    :default_prevented,
+    :_js_ref
+  ]
+
+  @spec prevent_default(Event.t()) :: Event.t()
+  def prevent_default(%Event{} = event)
+
+  @spec stop_propagation(Event.t()) :: Event.t()
+  def stop_propagation(%Event{} = event)
+end
+#+end_src
+
+*** HTTP/Fetch
+
+#+begin_src elixir
+defmodule CurupiraWeb.Fetch do
+  defstruct [
+    :url,
+    :method,
+    :headers,
+    :body,
+    :timeout
+  ]
+
+  defmodule Response do
+    defstruct [
+      :status,
+      :headers,
+      :body,
+      :ok?
+    ]
+  end
+
+  @spec get(String.t(), keyword()) :: {:ok, Response.t()} | {:error, term()}
+  def get(url, opts \\ [])
+
+  @spec post(String.t(), keyword()) :: {:ok, Response.t()} | {:error, term()}
+  def post(url, opts \\ [])
+end
+#+end_src
+
+*** Local Storage
+
+#+begin_src elixir
+defmodule CurupiraWeb.Storage do
+  @spec get(String.t()) :: String.t() | nil
+  def get(key)
+
+  @spec set(String.t(), String.t()) :: :ok
+  def set(key, value)
+
+  @spec remove(String.t()) :: :ok
+  def remove(key)
+
+  @spec clear() :: :ok
+  def clear()
+end
+#+end_src
+
+*** Console
+
+#+begin_src elixir
+defmodule CurupiraWeb.Console do
+  @spec log(term()) :: :ok
+  def log(value)
+
+  @spec error(term()) :: :ok
+  def error(value)
+
+  @spec warn(term()) :: :ok
+  def warn(value)
+end
+#+end_src
+
+* Real-World Example: Todo App
+
+#+begin_src elixir
+defmodule TodoApp do
+  @moduledoc """
+  Complete TodoMVC implementation in pure Elixir
+  """
+
+  alias CurupiraWeb.{Document, Element, Event, Storage, Console}
+
+  defmodule Todo do
+    defstruct [:id, :text, :completed]
+  end
+
+  def main do
+    Console.log("Todo app starting...")
+
+    # Setup event listeners
+    Document.get_element_by_id("add-btn")
+    |> Element.add_event_listener("click", &handle_add/1)
+
+    Document.get_element_by_id("clear-completed")
+    |> Element.add_event_listener("click", &handle_clear_completed/1)
+
+    # Load and render initial todos
+    load_todos()
+    |> render_todos()
+  end
+
+  # Event Handlers
+
+  defp handle_add(%Event{} = event) do
+    Event.prevent_default(event)
+
+    input = Document.get_element_by_id("todo-input")
+
+    case Element.get_value(input) do
+      "" ->
+        :ok
+      text ->
+        new_todo = %Todo{
+          id: generate_id(),
+          text: text,
+          completed: false
+        }
+
+        todos = [new_todo | load_todos()]
+
+        save_todos(todos)
+        render_todos(todos)
+        Element.set_value(input, "")
+    end
+  end
+
+  defp handle_toggle(%Event{target: target}) do
+    %Element{attributes: attrs} = target
+    todo_id = Map.get(attrs, "data-id") |> String.to_integer()
+
+    todos = load_todos()
+    |> Enum.map(fn
+      %Todo{id: ^todo_id} = todo ->
+        %{todo | completed: !todo.completed}
+      todo ->
+        todo
+    end)
+
+    save_todos(todos)
+    render_todos(todos)
+  end
+
+  defp handle_clear_completed(_event) do
+    todos = load_todos()
+    |> Enum.reject(&(&1.completed))
+
+    save_todos(todos)
+    render_todos(todos)
+  end
+
+  # Rendering
+
+  defp render_todos(todos) do
+    container = Document.get_element_by_id("todo-list")
+
+    # Clear existing
+    Element.set_inner_html(container, "")
+
+    # Render each todo
+    Enum.each(todos, fn todo ->
+      render_todo(todo)
+      |> Element.append_to(container)
+    end)
+
+    update_counts(todos)
+  end
+
+  defp render_todo(%Todo{id: id, text: text, completed: completed}) do
+    li = Document.create_element("li")
+    |> Element.add_class(if completed, do: "completed", else: "")
+
+    checkbox = Document.create_element("input")
+    |> Element.set_attribute("type", "checkbox")
+    |> Element.set_attribute("data-id", to_string(id))
+    |> Element.set_checked(completed)
+    |> Element.add_event_listener("change", &handle_toggle/1)
+
+    label = Document.create_element("label")
+    |> Element.set_text(text)
+
+    li
+    |> Element.append_child(checkbox)
+    |> Element.append_child(label)
+  end
+
+  defp update_counts(todos) do
+    active_count = Enum.count(todos, &(!&1.completed))
+    completed_count = Enum.count(todos, &(&1.completed))
+
+    Document.get_element_by_id("active-count")
+    |> Element.set_text("#{active_count} items left")
+
+    Document.get_element_by_id("clear-completed")
+    |> Element.set_text("Clear completed (#{completed_count})")
+    |> Element.set_visible(completed_count > 0)
+  end
+
+  # Storage
+
+  defp load_todos do
+    case Storage.get("todos") do
+      nil -> []
+      json -> JSON.decode!(json)
+    end
+  end
+
+  defp save_todos(todos) do
+    Storage.set("todos", JSON.encode!(todos))
+  end
+
+  defp generate_id do
+    :rand.uniform(1_000_000)
+  end
+end
+#+end_src
+
+* User Experience
+
+** What User Writes
+
+Pure Elixir:
+- Structs for data
+- Pattern matching
+- Pipe operators
+- Comprehensions
+- Guards
+- All familiar Elixir patterns
+
+** What User Never Sees
+
+- JavaScript syntax
+- Raw JS objects
+- DOM API quirks
+- Callback hell
+- Manual type checking
+
+** Development Workflow
+
+#+begin_src shell
+# Start new project
+mix gen curupira my_app
+cd my_app
+
+# Write Elixir code
+# lib/my_app.ex - pure Elixir
+
+# Compile & watch
+mix watch.compile
+
+# Browser opens at localhost:5050
+# Changes auto-reload
+#+end_src
+
+* Critical Requirements
+
+** For curupira_script
+
+1. *Struct support* - MUST WORK
+   - Define structs
+   - Pattern match on structs
+   - Update structs (=%{user | name: "Bob"}=)
+
+2. *Pattern matching* - MUST WORK
+   - Function heads
+   - Case expressions
+   - With expressions
+   - Guards
+
+3. *Pipe operator* - MUST WORK
+   - Chain transformations
+   - Works with structs
+
+4. *Modern Elixir* - SHOULD WORK
+   - Stepped ranges
+   - =then/2=, =tap/2=
+   - Duration
+   - JSON module
+
+** For curupira_web
+
+1. *Everything returns structs* - CRITICAL
+   - =Document.get_element_by_id/1= → =Element.t()=
+   - Event handlers receive =Event.t()=
+   - Fetch returns =Response.t()=
+
+2. *Pipeable API* - CRITICAL
+   #+begin_src elixir
+   elem
+   |> Element.set_text("foo")
+   |> Element.add_class("bar")
+   #+end_src
+
+3. *Pattern matchable* - CRITICAL
+   #+begin_src elixir
+   def handle(%Event{type: "click", target: target}) do
+     # ...
+   end
+   #+end_src
+
+4. *Feels like Elixir* - CRITICAL
+   - Use Elixir conventions
+   - Return ={:ok, value}= or ={:error, reason}=
+   - Use atoms for tags
+   - Use keyword lists for options
+
+* Non-Requirements
+
+** Don't Need
+
+- Full OTP support
+- Processes (spawn/receive)
+- GenServer/Supervisor
+- Distributed Erlang
+- NIFs/Ports
+- 100% stdlib coverage
+
+** Can Live Without
+
+- Macros (use pre-expanded AST)
+- Protocols (maybe later)
+- Some stdlib functions
+- Full Unicode support
+
+* Performance Targets
+
+** Compilation Speed
+
+| Project Size | Target |
+|--------------|--------|
+| Small (10 modules) | < 2s |
+| Medium (50 modules) | < 5s |
+| Large (100 modules) | < 15s |
+
+Watch mode: < 500ms for single module
+
+** Bundle Size (minified + gzipped)
+
+| App Complexity | Target |
+|----------------|--------|
+| Small (basic DOM) | ~25 KB |
+| Medium (+ fetch, storage) | ~50 KB |
+| Large (full features) | ~100 KB |
+
+** Runtime Performance
+
+Fast enough for UI interactions:
+- Button clicks: instant
+- List rendering (1000 items): < 100ms
+- Form validation: instant
+- API calls: network-bound
+
+Don't need to beat React/Vue, just be usable.
+
+* Success Criteria
+
+** Month 1
+- ✅ Can compile structs
+- ✅ Pattern matching works
+- ✅ Can call curupira_web functions
+- ✅ Basic DOM manipulation works
+
+** Month 3
+- ✅ TodoMVC working
+- ✅ Modern Elixir features
+- ✅ Good error messages
+- ✅ Decent performance
+
+** Month 6 (Production Ready)
+- ✅ Real apps can be built
+- ✅ Documentation complete
+- ✅ Examples available
+- ✅ Community starting to form
+
+* Philosophy
+
+Write frontend apps the same way you write Elixir backend:
+- Structs for data
+- Pattern matching for flow control
+- Pipes for transformations
+- Comprehensions for collections
+- Guards for validation
+
+*Zero JavaScript required.*
+
+---
+
+Last Updated: 2025-11-27

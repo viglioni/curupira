@@ -37,10 +37,11 @@ curupira/
 
 ### Important Files to Read
 
-1. **[design.org](.llm/design.org)** - Comprehensive technical design (MUST READ)
-2. **[decisions.org](.llm/decisions.org)** - Key architecture decisions with rationale
-3. **[readme.org](../readme.org)** - Project overview
-4. **[packages/curupira_script/]** - Where we'll fork ElixirScript
+1. **[expectations.org](.llm/expectations.org)** - What we're building & why (READ FIRST!)
+2. **[design.org](.llm/design.org)** - Comprehensive technical design
+3. **[decisions.org](.llm/decisions.org)** - Key architecture decisions with rationale
+4. **[todo.org](.llm/todo.org)** - Task tracking & progress
+5. **[readme.org](../readme.org)** - Project overview
 
 ---
 
@@ -257,6 +258,26 @@ Expand from ~20% to ~30% stdlib coverage:
 - **100% stdlib coverage**: Diminishing returns
 
 See [decisions.org](.llm/decisions.org) for detailed rationale.
+
+---
+
+## 🎯 What We're Building
+
+**Primary Goal:** Write frontend apps in **pure Elixir** - zero JavaScript required.
+
+**Critical Feature:** Browser APIs must return **Elixir structs**, not raw JS objects.
+
+```elixir
+# User writes pure Elixir
+Document.get_element_by_id("app")
+|> Element.set_text("Hello!")
+|> Element.add_class("active")
+
+# Returns proper structs - can pattern match!
+%Element{id: "app", tag_name: "div"} = elem
+```
+
+See [expectations.org](.llm/expectations.org) for complete vision and TodoMVC example.
 
 ---
 
