@@ -1,0 +1,816 @@
+#+title: CurupiraScript Architecture Decisions
+#+author: Curupira Team
+#+date: 2025-11-27
+#+startup: content
+
+* Introduction
+
+This document records key architecture decisions made for CurupiraScript, including the rationale, alternatives considered, and trade-offs.
+
+Each decision follows the format:
+- Decision: What we decided
+- Rationale: Why we decided it
+- Alternatives: What else we considered
+- Trade-offs: Pros and cons
+- Status: Accepted/Rejected/Superseded
+
+* Decision 1: Fork ElixirScript, Don't Rewrite
+
+** Decision
+
+Fork the ElixirScript codebase and enhance it incrementally rather than rewriting from scratch.
+
+** Rationale
+
+ElixirScript has:
+- ~10,000 lines of working compiler code
+- Proven architecture (BEAM AST → ESTree → JS)
+- Comprehensive test suite
+- Working runtime library (~3,000 lines JS)
+- Solved hard problems (pattern matching, tail-call optimization, protocols)
+
+Starting from scratch would require 18-24 months to reach parity.
+
+** Alternatives Considered
+
+*** Rewrite from scratch
+
+Pros:
+- Clean, modern codebase
+- Perfect architecture
+- No technical debt
+- Learning opportunity
+
+Cons:
+- 18-24 months to reach parity
+- High risk of failure
+- Must re-solve all hard problems
+- No users during development
+
+*** Use different base (e.g., Erlscripten)
+
+Pros:
+- Different approach (Erlang → PureScript → JS)
+- OTP support
+
+Cons:
+- Even less maintained than ElixirScript
+- More complex pipeline
+- PureScript adds extra layer
+- No direct Elixir support
+
+** Trade-offs
+
+Pros:
+- ✅ Working code from day 1
+- ✅ Existing tests validate changes
+- ✅ Ship improvements quickly (3-4 months to first release)
+- ✅ Lower risk
+- ✅ Can attract ElixirScript users
+
+Cons:
+- ❌ Inherit some technical debt
+- ❌ Code may not be "perfect"
+- ❌ Need to understand existing architecture
+- ❌ Some refactoring required
+
+** Status
+
+*Accepted* - This is the core strategy for CurupiraScript.
+
+* Decision 2: ES Modules Only, Drop Other Formats
+
+** Decision
+
+Only generate ES Module (ESM) output. Drop CommonJS and UMD support.
+
+** Rationale
+
+ES Modules are the standard in 2025:
+- Supported by all modern browsers
+- Supported by all modern bundlers (Vite, esbuild, Rollup, webpack)
+- Native to Node.js 12+
+- Better for tree-shaking
+
+ElixirScript's support for multiple formats adds complexity with diminishing value.
+
+** Alternatives Considered
+
+*** Support multiple formats (ES/CommonJS/UMD)
+
+Pros:
+- Maximum compatibility
+- Users can choose format
+- Backward compatible with old tools
+
+Cons:
+- 3x more code to maintain
+- More complex output pipeline
+- Most users don't need it
+- Bundlers can convert if needed
+
+*** CommonJS only
+
+Pros:
+- Simpler than ES modules
+- Widely compatible
+
+Cons:
+- Outdated standard
+- Worse tree-shaking
+- Moving away from standard
+
+** Trade-offs
+
+Pros:
+- ✅ Simpler codebase (one output format)
+- ✅ Modern standard
+- ✅ Best tree-shaking
+- ✅ Native browser support
+- ✅ Native Node.js support
+
+Cons:
+- ❌ Can't use directly in very old Node.js (< 12)
+- ❌ Breaking change from ElixirScript
+
+** Status
+
+*Accepted* - ES Modules only.
+
+Mitigation: Users who need CommonJS can use bundlers to convert.
+
+* Decision 3: Use BEAM Debug Info for AST
+
+** Decision
+
+Extract AST from compiled BEAM files using debug_info, rather than parsing Elixir source directly.
+
+** Rationale
+
+BEAM debug_info contains:
+- Macro-expanded AST (don't need to implement macro expansion)
+- Same AST that Elixir compiler uses
+- Reliable and stable
+- Works with any Elixir version that compiles to BEAM
+
+This is ElixirScript's approach and it works well.
+
+** Alternatives Considered
+
+*** Parse .ex files directly with Sourceror
+
+Pros:
+- Can work without compilation step
+- Direct access to source
+- Could transpile on-the-fly
+
+Cons:
+- Must implement macro expansion (extremely complex)
+- Must track Elixir parser changes
+- Error-prone
+- Significant implementation effort
+
+*** Use Elixir's Code.string_to_quoted
+
+Pros:
+- Built-in to Elixir
+- Reliable parser
+
+Cons:
+- Still need macro expansion
+- Requires Elixir runtime at compile time
+- AST may differ from BEAM version
+
+** Trade-offs
+
+Pros:
+- ✅ Macros pre-expanded (huge win)
+- ✅ Stable, tested approach
+- ✅ Same AST Elixir uses
+- ✅ No parser maintenance
+
+Cons:
+- ❌ Requires compilation to BEAM first
+- ❌ Can't transpile raw .ex files
+- ❌ Extra compilation step
+
+** Status
+
+*Accepted* - Use BEAM debug_info.
+
+Note: This requires Erlang 20+ (which we already require).
+
+* Decision 4: Pattern Matching via Runtime Library
+
+** Decision
+
+Use runtime pattern matching library (like ElixirScript's Tailored) rather than compiling patterns to JavaScript conditionals.
+
+** Rationale
+
+Pattern matching in Elixir is complex:
+- Nested patterns
+- Guards
+- Multiple clause functions
+- Destructuring in multiple contexts
+
+Compiling this correctly to JS conditionals is extremely difficult and error-prone.
+
+** Alternatives Considered
+
+*** Compile patterns to native JS conditionals
+
+Example:
+#+begin_src elixir
+case value do
+  {:ok, x} -> x
+  {:error, msg} -> msg
+end
+#+end_src
+
+Could become:
+#+begin_src javascript
+if (value instanceof Tuple && value.get(0) === Symbol.for("ok")) {
+  const x = value.get(1);
+  return x;
+} else if (value instanceof Tuple && value.get(0) === Symbol.for("error")) {
+  const msg = value.get(1);
+  return msg;
+}
+#+end_src
+
+Pros:
+- Better performance (no runtime library)
+- Smaller bundle size
+- More readable output
+- Native JS
+
+Cons:
+- Very complex to implement correctly
+- Must handle all pattern types
+- Hard to debug when wrong
+- Fragile (easy to break)
+- Huge implementation effort
+
+*** Use different runtime library
+
+Pros:
+- Could be faster/smaller
+- More modern approach
+
+Cons:
+- Must implement from scratch
+- Tailored works and is tested
+
+** Trade-offs
+
+Pros:
+- ✅ Easier to implement correctly
+- ✅ Handles complex patterns
+- ✅ Proven approach (ElixirScript uses it)
+- ✅ Easier to debug
+
+Cons:
+- ❌ Runtime overhead
+- ❌ Larger bundle size
+- ❌ Less readable output
+- ❌ External dependency
+
+** Status
+
+*Accepted* - Use runtime pattern matching library.
+
+Future: Could explore compiling simple patterns (like ={:ok, _}=) to conditionals while keeping library for complex patterns.
+
+* Decision 5: Immutability via Object.freeze()
+
+** Decision
+
+Use =Object.freeze()= to make JavaScript objects/arrays immutable, matching Elixir semantics.
+
+** Rationale
+
+Elixir data structures are immutable. JavaScript's aren't. We must enforce immutability to prevent bugs.
+
+** Alternatives Considered
+
+*** Immutable.js library
+
+Pros:
+- True immutability
+- Efficient structural sharing
+- Better performance for large collections
+- Persistent data structures
+
+Cons:
+- Large dependency (~60KB)
+- Different API than native JS
+- Harder interop with vanilla JS
+- Structural sharing complexity
+
+*** No immutability enforcement
+
+Pros:
+- Best performance
+- Smallest bundle
+- Native JS behavior
+
+Cons:
+- Breaks Elixir semantics
+- Easy to introduce bugs
+- Surprising behavior for Elixir developers
+
+*** Proxy-based immutability
+
+Pros:
+- Can intercept mutations
+- Better error messages
+- No Object.freeze overhead
+
+Cons:
+- Complex implementation
+- Proxy overhead
+- Compatibility concerns
+
+** Trade-offs
+
+Pros:
+- ✅ Enforces immutability
+- ✅ Built-in to JS (no dependency)
+- ✅ Simple implementation
+- ✅ Catches mutation bugs
+
+Cons:
+- ❌ Performance cost (freeze is not free)
+- ❌ Shallow freeze only (must freeze recursively)
+- ❌ Not truly immutable (can be broken with Object.defineProperty)
+
+** Status
+
+*Accepted* - Use Object.freeze() recursively.
+
+Future: Consider Immutable.js if performance becomes an issue with large collections.
+
+* Decision 6: Atoms as Symbol.for()
+
+** Decision
+
+Represent Elixir atoms as JavaScript Symbols using =Symbol.for()=.
+
+** Rationale
+
+Atoms in Elixir:
+- Unique per name
+- Global registry
+- Constant values
+- Used for tags, keys, etc.
+
+=Symbol.for()= in JavaScript:
+- Global symbol registry
+- Unique per string key
+- Retrievable with =Symbol.keyFor()=
+- Perfect semantic match
+
+** Alternatives Considered
+
+*** String literals
+
+Example: =:ok= → ="ok"=
+
+Pros:
+- Simpler
+- More readable output
+- Easy interop with JS
+
+Cons:
+- Not unique (=:foo= same as ="foo"=)
+- Semantic confusion (atom vs string)
+- Can't distinguish atom from binary
+
+*** Custom Atom class
+
+Example:
+#+begin_src javascript
+class Atom {
+  static registry = new Map();
+  static for(name) {
+    if (!Atom.registry.has(name)) {
+      Atom.registry.set(name, new Atom(name));
+    }
+    return Atom.registry.get(name);
+  }
+  constructor(name) { this.name = name; }
+}
+#+end_src
+
+Pros:
+- Full control
+- Can add methods
+- Clear type distinction
+
+Cons:
+- More code to maintain
+- Larger bundle
+- Not native JS
+- Reinventing Symbol
+
+*** ES6 const bindings
+
+Example: =const OK = "ok"=
+
+Pros:
+- Very simple
+- Fast
+
+Cons:
+- Not unique
+- Pollutes namespace
+- Can't enumerate all atoms
+
+** Trade-offs
+
+Pros:
+- ✅ Global registry (like atoms)
+- ✅ Unique per name
+- ✅ Built-in to JS
+- ✅ Semantic match
+- ✅ Can use Symbol.keyFor() to get name
+
+Cons:
+- ❌ Can't enumerate all symbols
+- ❌ String representation requires Symbol.keyFor()
+- ❌ Not as readable in console.log
+
+** Status
+
+*Accepted* - Use Symbol.for() for atoms.
+
+Note: Provide helper functions for common operations:
+#+begin_src javascript
+Elixir.atom = (name) => Symbol.for(name);
+Elixir.atomToString = (sym) => Symbol.keyFor(sym);
+#+end_src
+
+* Decision 7: No OTP Support
+
+** Decision
+
+Do not support OTP constructs (GenServer, Supervisor, Task, spawn, send, receive).
+
+Exception: Basic Agent support (synchronous, no actual processes).
+
+** Rationale
+
+OTP is designed for server-side, concurrent, fault-tolerant systems. Client-side JavaScript:
+- Single-threaded
+- No processes
+- No supervisors
+- Different concurrency model (async/await, promises)
+
+Implementing OTP would be:
+- Massive effort (6+ months)
+- Complex and error-prone
+- Questionable value for client-side
+- Misleading (wouldn't be real OTP)
+
+** Alternatives Considered
+
+*** Full OTP support with Web Workers
+
+Pros:
+- Could share code with server
+- Powerful abstraction
+- True parallelism
+
+Cons:
+- Massive implementation effort
+- Web Workers have limitations
+- Message serialization overhead
+- Different semantics than BEAM
+- Complexity explosion
+
+*** Async/await mapping
+
+Map GenServer to async classes, spawn to Promises, etc.
+
+Pros:
+- Native JS async patterns
+- Familiar to JS developers
+
+Cons:
+- Very different semantics
+- Confusing for Elixir developers
+- Not really OTP
+- Still complex
+
+*** Support only spawn/send/receive (no GenServer)
+
+Pros:
+- Simpler than full OTP
+- Enough for basic use cases
+
+Cons:
+- Still complex
+- Hard to implement correctly
+- Limited value
+
+** Trade-offs
+
+Pros:
+- ✅ Massively reduces scope
+- ✅ Simpler codebase
+- ✅ Faster to ship
+- ✅ Client-side doesn't need it
+- ✅ Can add later if needed
+
+Cons:
+- ❌ Can't share OTP code with backend
+- ❌ Limits some Elixir patterns
+- ❌ No GenServer/Supervisor
+
+** Status
+
+*Accepted* - No OTP support.
+
+Mitigation:
+- Support basic Agent for state (synchronous, no processes)
+- Document clearly what's not supported
+- Provide alternative patterns for common use cases
+- Can reconsider in future if there's strong demand
+
+* Decision 8: One .js File Per Elixir Module
+
+** Decision
+
+Generate one ES Module (.js file) per Elixir module.
+
+Example:
+- =MyApp.Users= → =Elixir.MyApp.Users.js=
+- =MyApp.Posts= → =Elixir.MyApp.Posts.js=
+
+** Rationale
+
+Benefits:
+- Better for tree-shaking (bundlers can eliminate unused modules)
+- 1:1 mapping easier to debug
+- Supports code splitting
+- Works well with ES module system
+- Standard practice in JS ecosystem
+
+** Alternatives Considered
+
+*** Single bundle file
+
+Example: All modules → =elixirscript.build.js=
+
+Pros:
+- Simpler deployment (one file)
+- Fewer HTTP requests
+- No bundler needed
+
+Cons:
+- No tree-shaking (entire app in one file)
+- Harder to debug (which module?)
+- No code splitting
+- Larger initial load
+
+*** One file per function
+
+Example:
+- =MyApp.Users.create/1= → =Elixir.MyApp.Users.create.js=
+- =MyApp.Users.update/2= → =Elixir.MyApp.Users.update.js=
+
+Pros:
+- Maximum tree-shaking
+- Finest granularity
+
+Cons:
+- Too many files
+- More complex imports
+- Overhead for small functions
+
+** Trade-offs
+
+Pros:
+- ✅ Good tree-shaking
+- ✅ Clear 1:1 mapping
+- ✅ Works with bundlers
+- ✅ Supports code splitting
+- ✅ Easy to debug
+
+Cons:
+- ❌ Many files to manage
+- ❌ Requires bundler for production
+
+** Status
+
+*Accepted* - One .js file per Elixir module.
+
+Note: Bundlers will combine as needed for production.
+
+* Decision 9: ~30% Standard Library Coverage Target
+
+** Decision
+
+Target ~30% coverage of Elixir standard library, focusing on most commonly used functions.
+
+Not aiming for 100% coverage.
+
+** Rationale
+
+Pareto principle: 20-30% of functions are used 80-90% of the time.
+
+ElixirScript had ~20% coverage and it was workable.
+
+100% coverage would be:
+- Years of effort
+- Diminishing returns
+- Hard to maintain
+
+** Alternatives Considered
+
+*** 100% stdlib coverage
+
+Pros:
+- Complete feature parity
+- No "this isn't supported" issues
+- Maximum code reuse from backend
+
+Cons:
+- Multi-year effort
+- Many functions irrelevant for client-side
+- High maintenance burden
+- Delays shipping
+
+*** Minimal coverage (~10%)
+
+Pros:
+- Ship faster
+- Smaller bundle
+- Less maintenance
+
+Cons:
+- Too limiting
+- Frequent "not supported" errors
+- Hard to build real apps
+
+** Trade-offs
+
+Pros:
+- ✅ Covers most use cases
+- ✅ Achievable timeline (12-18 months)
+- ✅ Maintainable
+- ✅ Can add more over time
+- ✅ Smaller bundles than 100%
+
+Cons:
+- ❌ Some functions missing
+- ❌ Can't run all Elixir code
+- ❌ Need to document what's supported
+
+** Status
+
+*Accepted* - Target 30% coverage, prioritized by usage.
+
+Strategy:
+- Phase 1: Keep ElixirScript's ~20%
+- Phase 2: Add high-value functions (Enum, String, Map, JSON)
+- Phase 3+: Add based on user feedback
+
+Document clearly what's supported.
+
+* Decision 10: Monorepo with Independent Versioning
+
+** Decision
+
+Use monorepo structure with three packages, each versioned independently:
+- =curupira_script= (transpiler)
+- =curupira_web= (browser APIs)
+- =curupira_template= (project template)
+
+Tag format: =<package>-v<version>=
+
+** Rationale
+
+Monorepo benefits:
+- Coordinated changes across packages
+- Single CI/CD pipeline
+- Easier cross-package testing
+- One source of truth
+
+Independent versions:
+- Packages evolve at different rates
+- Breaking changes in one don't force bumps in others
+- Users only download what they need from Hex
+
+** Alternatives Considered
+
+*** Separate repos per package
+
+Pros:
+- Complete independence
+- Clearer ownership
+- Smaller clones
+
+Cons:
+- Hard to coordinate changes
+- 3 separate CI pipelines
+- Harder to test integration
+- More overhead
+
+*** Single package
+
+Pros:
+- Simplest structure
+- One version number
+- Easy to reason about
+
+Cons:
+- Users download everything
+- Can't evolve pieces independently
+- Mixing concerns
+
+*** Monorepo with synchronized versions
+
+Like Babel (all packages same version).
+
+Pros:
+- Easy to communicate version
+- Clear compatibility
+
+Cons:
+- Unnecessary version bumps
+- Wastes version numbers
+- Confusing when packages haven't changed
+
+** Trade-offs
+
+Pros:
+- ✅ Easy development (one repo)
+- ✅ Coordinated changes
+- ✅ Independent releases
+- ✅ Users download only what they need
+- ✅ Can evolve at different rates
+
+Cons:
+- ❌ Tag management more complex
+- ❌ Must track compatibility matrix
+- ❌ Publishing from subdirectories
+
+** Status
+
+*Accepted* - Monorepo with independent versions.
+
+Tag format:
+- =curupira_script-v0.33.0=
+- =curupira_web-v0.3.0=
+- =curupira_template-v1.0.0=
+
+* Summary Table
+
+| Decision | Status | Impact |
+|----------+--------+--------|
+| Fork ElixirScript | ✅ Accepted | High - Core strategy |
+| ES Modules only | ✅ Accepted | Medium - Simpler codebase |
+| BEAM debug_info AST | ✅ Accepted | High - No macro expansion needed |
+| Runtime pattern matching | ✅ Accepted | Medium - Easier implementation |
+| Object.freeze() | ✅ Accepted | Low - Enforces immutability |
+| Symbol.for() atoms | ✅ Accepted | Medium - Good semantic match |
+| No OTP support | ✅ Accepted | High - Reduces scope massively |
+| One file per module | ✅ Accepted | Medium - Better tree-shaking |
+| ~30% stdlib coverage | ✅ Accepted | High - Pragmatic scope |
+| Monorepo + independent versions | ✅ Accepted | Medium - Better DX |
+
+* Future Decisions
+
+These decisions are deferred until later phases:
+
+** Source Map Format
+
+Should we use standard JS source maps or custom format?
+
+Deferred until: Phase 3 (Developer Experience)
+
+** TypeScript Definitions
+
+Should we generate .d.ts files? From @spec or manual?
+
+Deferred until: Phase 5 (Tooling)
+
+** Pattern Matching Optimization
+
+Should we compile simple patterns to JS conditionals?
+
+Deferred until: After Phase 2 (if performance issues)
+
+** Bundler Integration
+
+Which bundlers to officially support? Provide plugins?
+
+Deferred until: Phase 5 (Tooling)
+
+---
+
+Document Version: 1.0
+Last Updated: 2025-11-27
+Next Review: After Phase 1 completion

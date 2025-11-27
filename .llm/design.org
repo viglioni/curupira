@@ -1,0 +1,879 @@
+#+title: CurupiraScript Design Document
+#+author: Curupira Team
+#+date: 2025-11-27
+#+startup: overview
+
+* Overview
+
+CurupiraScript is an Elixir-to-JavaScript transpiler that converts Elixir code into modern JavaScript (ES2020+) for client-side execution in web browsers.
+
+** Core Principles
+
+1. Gradual Enhancement - Fork ElixirScript, modernize incrementally
+2. Pragmatic Coverage - Support common Elixir features, not everything
+3. Modern Output - Generate clean, readable ES2020+ JavaScript
+4. Developer Experience - Fast compilation, good error messages, hot reload
+5. Production Ready - Stable, tested, documented
+
+** Goals & Non-Goals
+
+*** Goals ✅
+
+- Support Elixir 1.17+ (current stable)
+- Core language features: modules, functions, pattern matching, guards, pipes
+- Essential data types: atoms, lists, maps, tuples, structs
+- Key stdlib modules: Enum, Map, List, String, Date/Time, JSON
+- Modern Elixir syntax: stepped ranges, then/tap, Duration
+- Fast compilation: < 5 seconds for medium projects
+- Clean JS output: Readable, debuggable, tree-shakeable
+- Good DX: Clear errors, source maps, hot reload support
+
+*** Non-Goals ❌
+
+- Full OTP support - No GenServer, Supervisor, processes (except basic Agent)
+- 100% stdlib coverage - Only commonly used functions (~30% coverage is fine)
+- Macro expansion - Use BEAM's pre-expanded AST
+- receive/spawn - Client-side doesn't need process model (maybe in future)
+- Backward compatibility - Breaking changes from ElixirScript are acceptable
+- Multiple output formats - ES Modules only (no CommonJS, UMD)
+
+* Architecture
+
+** High-Level Pipeline
+
+#+begin_example
+┌─────────────────┐
+│  Entry Modules  │  mix.exs: elixir_script: [input: MyApp]
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Find Used      │  Crawl module dependencies recursively
+│  Modules        │  lib/curupira_script/passes/find_used_modules.ex
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Extract AST    │  Read from BEAM debug_info (macro-expanded)
+│  from BEAM      │  lib/curupira_script/beam.ex
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Find Used      │  Tree-shake unused functions
+│  Functions      │  lib/curupira_script/passes/find_used_functions.ex
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Translate      │  Elixir AST → ESTree (JavaScript AST)
+│  to ESTree      │  lib/curupira_script/passes/translate/
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Generate       │  ESTree → JavaScript source code
+│  JavaScript     │  lib/curupira_script/passes/output.ex
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Write ES       │  One .js file per Elixir module
+│  Modules        │  js/Elixir.MyApp.js
+└─────────────────┘
+#+end_example
+
+** Directory Structure
+
+#+begin_example
+lib/curupira_script/
+├── curupira_script.ex           # Main API
+├── compiler.ex                  # Compilation orchestration
+├── state.ex                     # Compilation state (ETS-based)
+├── beam.ex                      # BEAM file AST extraction
+├── manifest.ex                  # Build manifest/cache
+│
+├── passes/                      # Compilation passes
+│   ├── find_used_modules.ex
+│   ├── find_used_functions.ex
+│   ├── translate.ex             # Main translation entry
+│   ├── output.ex                # JS code generation
+│   │
+│   └── translate/               # Translation modules
+│       ├── form.ex              # General form translation
+│       ├── module.ex            # Module translation
+│       ├── function.ex          # Function translation
+│       ├── clause.ex            # Clause translation
+│       ├── identifier.ex        # Variable/function names
+│       ├── helpers.ex           # Translation utilities
+│       │
+│       └── forms/               # Specific form handlers
+│           ├── pattern.ex       # Pattern matching
+│           ├── bitstring.ex     # Binary/bitstring
+│           ├── map.ex           # Map literals
+│           ├── for.ex           # Comprehensions
+│           ├── with.ex          # with expressions
+│           ├── try.ex           # try/rescue/catch
+│           ├── receive.ex       # receive (maybe future)
+│           ├── js.ex            # JS interop
+│           └── ...
+│
+├── module_systems/              # Output formats
+│   └── es.ex                    # ES Module formatter
+│
+└── lib/                         # Elixir-side runtime
+    ├── agent.ex                 # Simple state management
+    ├── js.ex                    # JS interop macros
+    ├── functions.ex             # Helper functions
+    └── string.ex                # String overrides
+#+end_example
+
+** JavaScript Runtime Structure
+
+#+begin_example
+priv/javascript/
+├── lib/                         # Runtime library
+│   ├── core.js                  # Core functions (Kernel.*)
+│   ├── pattern.js               # Pattern matching engine
+│   ├── types.js                 # Data types (Tuple, etc.)
+│   ├── enum.js                  # Enum module
+│   ├── map.js                   # Map module
+│   ├── string.js                # String module
+│   ├── list.js                  # List module
+│   ├── date.js                  # Date/Time/DateTime
+│   ├── duration.js              # Duration (NEW in 1.17)
+│   ├── json.js                  # JSON module (NEW in 1.18)
+│   └── ...
+│
+└── tests/                       # Runtime tests (JavaScript)
+    ├── pattern.test.js
+    ├── enum.test.js
+    └── ...
+#+end_example
+
+* Implementation Phases
+
+** Phase 0: Setup & Foundation (Week 1-2)
+
+Goal: Get ElixirScript code running with modern Elixir/Erlang
+
+Tasks:
+- [ ] Fork ElixirScript codebase to =packages/curupira_script/=
+- [ ] Update =mix.exs= dependencies:
+  - [ ] Bump Elixir requirement to =~> 1.17=
+  - [ ] Update =estree= to latest version
+  - [ ] Remove deprecated dependencies
+  - [ ] Add new deps: =jason=, =sourceror= (if needed)
+- [ ] Fix compilation errors from dependency updates
+- [ ] Get existing test suite passing
+- [ ] Set up CI/CD for testing
+- [ ] Update README with new goals
+
+Success Criteria:
+- ✅ All existing ElixirScript tests pass
+- ✅ Compiles on Elixir 1.17 + OTP 26/27
+- ✅ CI pipeline green
+
+** Phase 1: Modern Elixir Syntax (Week 3-6)
+
+Goal: Support Elixir 1.12-1.17 language features
+
+*** 1.1: Stepped Ranges (1.12)
+
+#+begin_src elixir
+# Elixir
+1..10//2  # => [1, 3, 5, 7, 9]
+
+# JavaScript output
+Elixir.Range.new(1, 10, 2).toArray()
+#+end_src
+
+Implementation:
+- [ ] Update AST pattern matching for ={:.., _, [first, last, step]}=
+- [ ] Implement =Range.new/3= in JS runtime
+- [ ] Add tests
+
+Files to modify:
+- =lib/curupira_script/passes/translate/form.ex=
+- =priv/javascript/lib/types.js= (Range implementation)
+
+*** 1.2: Kernel.then/2 and tap/2 (1.12)
+
+#+begin_src elixir
+# Elixir
+value
+|> tap(&IO.inspect/1)
+|> then(fn x -> x * 2 end)
+
+# JavaScript
+Elixir.Kernel.then(
+  Elixir.Kernel.tap(value, (x) => console.log(x)),
+  (x) => x * 2
+)
+#+end_src
+
+Implementation:
+- [ ] Add =Kernel.tap/2= to JS runtime
+- [ ] Add =Kernel.then/2= to JS runtime
+- [ ] Update pipe operator translation
+- [ ] Add tests
+
+Files to modify:
+- =priv/javascript/lib/core.js=
+
+*** 1.3: is_non_struct_map/1 guard (1.17)
+
+#+begin_src elixir
+# Elixir
+def process(x) when is_non_struct_map(x), do: x
+
+# JavaScript
+function process(x) {
+  if (Elixir.Kernel.is_non_struct_map(x)) {
+    return x;
+  }
+  throw new Error("FunctionClauseError");
+}
+#+end_src
+
+Implementation:
+- [ ] Add guard translation for =is_non_struct_map=
+- [ ] Implement in JS runtime
+- [ ] Add tests
+
+Files to modify:
+- =lib/curupira_script/passes/translate/clause.ex=
+- =priv/javascript/lib/core.js=
+
+*** 1.4: Duration type (1.17)
+
+#+begin_src elixir
+# Elixir
+duration = Duration.new!(hour: 1, minute: 30)
+Date.shift(~D[2024-01-01], duration)
+
+# JavaScript
+const duration = Elixir.Duration.new({hour: 1, minute: 30});
+Elixir.Date.shift(Elixir.Date.fromISO("2024-01-01"), duration);
+#+end_src
+
+Implementation:
+- [ ] Create =Duration= struct implementation
+- [ ] Implement =Duration.new!/1=
+- [ ] Update =Date.shift/2=, =Time.shift/2=, =DateTime.shift/2=
+- [ ] Add tests
+
+Files to create:
+- =priv/javascript/lib/duration.js=
+
+Files to modify:
+- =priv/javascript/lib/date.js=
+
+** Phase 2: Standard Library Expansion (Week 7-12)
+
+Goal: Add most commonly used stdlib functions
+
+*** Priority 1: Enum module
+
+Current coverage: ~20 functions
+Target coverage: ~70 functions
+
+High-value additions:
+
+#+begin_src elixir
+Enum.product/1           # NEW in 1.12
+Enum.zip_with/2          # NEW in 1.12
+Enum.min_max/1           # Common
+Enum.frequencies/1       # Common
+Enum.group_by/2          # Common
+Enum.chunk_every/2       # Common
+Enum.flat_map/2          # Common
+#+end_src
+
+*** Priority 2: String module
+
+Current coverage: ~15 functions
+Target coverage: ~40 functions
+
+High-value additions:
+
+#+begin_src elixir
+String.trim/1
+String.trim_leading/1
+String.trim_trailing/1
+String.replace_prefix/3
+String.replace_suffix/3
+String.pad_leading/2
+String.pad_trailing/2
+String.graphemes/1
+#+end_src
+
+*** Priority 3: Map module
+
+Current coverage: ~10 functions
+Target coverage: ~30 functions
+
+High-value additions:
+
+#+begin_src elixir
+Map.filter/2
+Map.reject/2
+Map.split/2
+Map.take/2
+Map.drop/2
+Map.merge/3
+Map.update!/3
+#+end_src
+
+*** Priority 4: JSON module (NEW in 1.18)
+
+#+begin_src elixir
+# Elixir
+JSON.encode!(%{name: "Alice", age: 30})
+JSON.decode!(~s({"name":"Alice"}))
+
+# JavaScript
+Elixir.JSON.encode({name: "Alice", age: 30})
+Elixir.JSON.decode('{"name":"Alice"}')
+#+end_src
+
+Implementation:
+- [ ] Create =JSON= module wrapping native =JSON.parse=/=JSON.stringify=
+- [ ] Handle atom key conversion
+- [ ] Support =JSON.Encoder= protocol
+- [ ] Add tests
+
+Files to create:
+- =priv/javascript/lib/json.js=
+
+** Phase 3: Developer Experience (Week 13-16)
+
+Goal: Make development pleasant and productive
+
+*** Better Error Messages
+
+Current state:
+#+begin_example
+** (CompileError) translation failed
+#+end_example
+
+Target state:
+#+begin_example
+** (CompileError) lib/my_app.ex:42: CurupiraScript cannot translate this expression
+
+    42 |   receive do
+       |   ^^^^^^^ receive is not supported in CurupiraScript
+
+Hint: CurupiraScript is designed for client-side code and doesn't support
+      Erlang's process model. Consider using Agent for state management.
+#+end_example
+
+Implementation:
+- [ ] Add error context to all translation failures
+- [ ] Include source file and line numbers
+- [ ] Add helpful hints for common issues
+- [ ] Create error catalog documentation
+
+*** Source Maps
+
+Generate source maps for debugging:
+
+#+begin_src javascript
+//# sourceMappingURL=Elixir.MyApp.js.map
+#+end_src
+
+Implementation:
+- [ ] Research ESTree → source map generation
+- [ ] Add source map generation to output phase
+- [ ] Test with browser DevTools
+- [ ] Add =--source-maps= option
+
+*** Incremental Compilation
+
+Only recompile changed modules
+
+Implementation:
+- [ ] Enhance manifest to track file mtimes
+- [ ] Skip unchanged modules
+- [ ] Detect transitive changes (if A uses B, and B changes, recompile A)
+- [ ] Add =--force= flag to bypass cache
+
+*** Watch Mode Integration
+
+Better integration with file watchers
+
+Implementation:
+- [ ] Emit compilation events
+- [ ] Support external watch tools (exsync, mix_test_watch)
+- [ ] Fast recompilation (< 1s for single module)
+
+** Phase 4: Advanced Features (Week 17-20)
+
+*** Protocols
+
+#+begin_src elixir
+defprotocol Renderable do
+  def render(data)
+end
+
+defimpl Renderable, for: Map do
+  def render(map), do: Jason.encode!(map)
+end
+
+# JavaScript
+Elixir.Renderable.render(myMap)  # Dispatches to correct impl
+#+end_src
+
+Current state: ElixirScript supports protocols but implementation needs review
+
+Implementation:
+- [ ] Review existing protocol implementation
+- [ ] Test with modern Elixir protocols
+- [ ] Add support for =@fallback_to_any=
+- [ ] Document limitations
+
+*** Agent (State Management)
+
+#+begin_src elixir
+{:ok, agent} = Agent.start_link(fn -> %{} end)
+Agent.update(agent, fn state -> Map.put(state, :key, "value") end)
+Agent.get(agent, fn state -> state.key end)
+#+end_src
+
+Current state: ElixirScript has basic Agent support
+
+Implementation:
+- [ ] Review existing Agent implementation
+- [ ] Use JS Map for internal storage
+- [ ] Add tests
+- [ ] Document that it's synchronous (no actual processes)
+
+** Phase 5: Tooling & Ecosystem (Week 21-24)
+
+*** Mix Compiler
+
+Integrate as Mix compiler:
+
+#+begin_src elixir
+# mix.exs
+def project do
+  [
+    compilers: Mix.compilers() ++ [:curupira_script],
+    curupira_script: [
+      input: MyApp,
+      output: "assets/js"
+    ]
+  ]
+end
+#+end_src
+
+Implementation:
+- [ ] Implement =Mix.Task.Compiler= behaviour
+- [ ] Support Mix compiler options
+- [ ] Emit proper diagnostics
+- [ ] Support =mix clean=
+
+*** CLI Tool
+
+Standalone CLI for non-Mix projects:
+
+#+begin_src shell
+curupira compile lib/my_app.ex -o dist/
+curupira watch lib/ -o dist/
+curupira --version
+#+end_src
+
+Implementation:
+- [ ] Create escript entry point
+- [ ] Add CLI argument parsing
+- [ ] Support watch mode
+- [ ] Add help documentation
+
+* Translation Strategy
+
+** Data Types
+
+*** Primitives
+
+| Elixir | JavaScript | Notes |
+|--------+------------+-------|
+| =42= | =42= | Direct |
+| =3.14= | =3.14= | Direct |
+| ="hello"= | ="hello"= | Direct |
+| =true= | =true= | Direct |
+| =nil= | =null= | Direct |
+
+*** Atoms
+
+#+begin_src elixir
+# Elixir
+:ok
+:error
+:my_atom
+
+# JavaScript
+Symbol.for("ok")
+Symbol.for("error")
+Symbol.for("my_atom")
+#+end_src
+
+Utilities:
+#+begin_src javascript
+// Runtime helper
+Elixir.atom = (name) => Symbol.for(name);
+Elixir.atomToString = (sym) => Symbol.keyFor(sym);
+#+end_src
+
+*** Lists
+
+#+begin_src elixir
+# Elixir
+[1, 2, 3]
+
+# JavaScript
+Object.freeze([1, 2, 3])
+#+end_src
+
+Note: Use =Object.freeze()= to prevent mutation
+
+*** Maps
+
+#+begin_src elixir
+# Elixir - atom keys
+%{name: "Alice", age: 30}
+
+# JavaScript
+Object.freeze(new Map([
+  [Symbol.for("name"), "Alice"],
+  [Symbol.for("age"), 30]
+]))
+#+end_src
+
+#+begin_src elixir
+# Elixir - string keys
+%{"name" => "Alice"}
+
+# JavaScript
+Object.freeze(new Map([
+  ["name", "Alice"]
+]))
+#+end_src
+
+*** Tuples
+
+#+begin_src elixir
+# Elixir
+{:ok, value}
+
+# JavaScript
+new Elixir.Tuple(Symbol.for("ok"), value)
+#+end_src
+
+Tuple class:
+#+begin_src javascript
+class Tuple {
+  constructor(...elements) {
+    this.elements = Object.freeze(elements);
+    Object.freeze(this);
+  }
+
+  get(index) {
+    return this.elements[index];
+  }
+
+  get length() {
+    return this.elements.length;
+  }
+}
+#+end_src
+
+*** Structs
+
+#+begin_src elixir
+# Elixir
+defstruct [:name, :age]
+
+%User{name: "Alice", age: 30}
+
+# JavaScript
+class User {
+  constructor(fields = {}) {
+    this.__struct__ = Symbol.for("User");
+    this.name = fields.name ?? null;
+    this.age = fields.age ?? null;
+    Object.freeze(this);
+  }
+}
+
+new User({name: "Alice", age: 30})
+#+end_src
+
+** Control Flow
+
+*** if/else
+
+#+begin_src elixir
+# Elixir
+if condition do
+  "yes"
+else
+  "no"
+end
+
+# JavaScript (simple)
+(condition ? "yes" : "no")
+
+# JavaScript (multi-line)
+(() => {
+  if (condition) {
+    return "yes";
+  } else {
+    return "no";
+  }
+})()
+#+end_src
+
+*** case
+
+#+begin_src elixir
+# Elixir
+case value do
+  {:ok, x} -> x
+  {:error, _} -> nil
+end
+
+# JavaScript
+Elixir.case(value, [
+  [new Tuple(Symbol.for("ok"), Elixir.var("x")),
+   (bindings) => bindings.x],
+  [new Tuple(Symbol.for("error"), Elixir.any()),
+   (_) => null]
+])
+#+end_src
+
+** Functions
+
+*** Pipe Operator
+
+#+begin_src elixir
+# Elixir
+value
+|> transform()
+|> process()
+|> output()
+
+# JavaScript
+output(process(transform(value)))
+#+end_src
+
+Or with intermediate variables for debugging:
+#+begin_src javascript
+const _pipe1 = transform(value);
+const _pipe2 = process(_pipe1);
+const _pipe3 = output(_pipe2);
+#+end_src
+
+** Modules
+
+#+begin_src elixir
+# Elixir
+defmodule MyApp.Users do
+  def create(attrs) do
+    # ...
+  end
+
+  def update(user, attrs) do
+    # ...
+  end
+end
+
+# JavaScript - js/Elixir.MyApp.Users.js
+export default {
+  create(attrs) {
+    // ...
+  },
+
+  update(user, attrs) {
+    // ...
+  }
+};
+#+end_src
+
+* Runtime Library
+
+** Core (Kernel Functions)
+
+Must implement commonly used Kernel functions:
+
+*** Type Checks
+
+#+begin_src javascript
+Elixir.is_atom(x)
+Elixir.is_binary(x)
+Elixir.is_integer(x)
+Elixir.is_float(x)
+Elixir.is_number(x)
+Elixir.is_list(x)
+Elixir.is_map(x)
+Elixir.is_tuple(x)
+Elixir.is_function(x)
+Elixir.is_nil(x)
+Elixir.is_non_struct_map(x)  // NEW in 1.17
+#+end_src
+
+*** Operators
+
+#+begin_src javascript
+Elixir.add(a, b)          // +
+Elixir.subtract(a, b)     // -
+Elixir.multiply(a, b)     // *
+Elixir.divide(a, b)       // /
+Elixir.div(a, b)          // div
+Elixir.rem(a, b)          // rem
+Elixir.concat(a, b)       // <>
+Elixir.append(a, b)       // ++
+#+end_src
+
+*** Other
+
+#+begin_src javascript
+Elixir.length(list)
+Elixir.hd(list)
+Elixir.tl(list)
+Elixir.elem(tuple, index)
+Elixir.put_elem(tuple, index, value)
+Elixir.inspect(term)
+Elixir.to_string(term)
+Elixir.tap(value, fn)     // NEW in 1.12
+Elixir.then(value, fn)    // NEW in 1.12
+#+end_src
+
+** Enum Module
+
+High priority functions:
+
+#+begin_src javascript
+Elixir.Enum.map(enumerable, fn)
+Elixir.Enum.filter(enumerable, fn)
+Elixir.Enum.reduce(enumerable, acc, fn)
+Elixir.Enum.each(enumerable, fn)
+Elixir.Enum.find(enumerable, fn)
+Elixir.Enum.all?(enumerable, fn)
+Elixir.Enum.any?(enumerable, fn)
+Elixir.Enum.count(enumerable)
+Elixir.Enum.empty?(enumerable)
+Elixir.Enum.member?(enumerable, value)
+Elixir.Enum.at(enumerable, index)
+Elixir.Enum.join(enumerable, separator)
+Elixir.Enum.sort(enumerable)
+Elixir.Enum.uniq(enumerable)
+Elixir.Enum.take(enumerable, n)
+Elixir.Enum.drop(enumerable, n)
+Elixir.Enum.zip(enum1, enum2)
+Elixir.Enum.with_index(enumerable)
+#+end_src
+
+* Testing Strategy
+
+** Elixir Tests (Compiler)
+
+Test the compilation pipeline:
+
+#+begin_src elixir
+# test/curupira_script/compiler_test.exs
+defmodule CurupiraScript.CompilerTest do
+  use ExUnit.Case
+
+  test "compiles simple module" do
+    result = CurupiraScript.compile(SimpleModule)
+    assert result.status == :ok
+    assert File.exists?(result.output_path)
+  end
+
+  test "handles compilation errors gracefully" do
+    assert_raise CurupiraScript.CompileError, fn ->
+      CurupiraScript.compile(InvalidModule)
+    end
+  end
+end
+#+end_src
+
+** JavaScript Tests (Runtime)
+
+Test the runtime library:
+
+#+begin_src javascript
+// priv/javascript/tests/enum.test.js
+import { Enum } from '../lib/enum.js';
+
+describe('Enum.map', () => {
+  test('maps over a list', () => {
+    const result = Enum.map([1, 2, 3], x => x * 2);
+    expect(result).toEqual([2, 4, 6]);
+  });
+});
+#+end_src
+
+** Integration Tests
+
+Test Elixir → JS round-trip:
+
+#+begin_src elixir
+# test/integration/basic_test.exs
+defmodule Integration.BasicTest do
+  use ExUnit.Case
+
+  setup do
+    # Compile test module
+    CurupiraScript.compile(TestModule, output: "test/fixtures/js")
+
+    # Run JS tests
+    {output, 0} = System.cmd("node", ["test/fixtures/js/run_tests.js"])
+
+    {:ok, output: output}
+  end
+
+  test "Elixir code produces expected JS output", %{output: output} do
+    assert output =~ "All tests passed"
+  end
+end
+#+end_src
+
+* Resources
+
+** ElixirScript
+
+- GitHub: https://github.com/elixirscript/elixirscript
+- Docs: https://hexdocs.pm/elixir_script/
+
+** Elixir Language
+
+- Changelog: https://github.com/elixir-lang/elixir/blob/main/CHANGELOG.md
+- v1.17 Release: https://elixir-lang.org/blog/2024/06/12/elixir-v1-17-0-released/
+- v1.18 Release: https://elixir-lang.org/blog/2024/12/19/elixir-v1-18-0-released/
+
+** JavaScript AST
+
+- ESTree Spec: https://github.com/estree/estree
+- Elixir ESTree: https://github.com/elixirscript/elixir-estree
+
+** Pattern Matching
+
+- Tailored (ElixirScript): https://github.com/elixirscript/tailored
+
+* Glossary
+
+- *AST* - Abstract Syntax Tree, tree representation of code structure
+- *BEAM* - Erlang virtual machine that Elixir compiles to
+- *ESTree* - JavaScript AST specification
+- *Transpiler* - Source-to-source compiler (Elixir → JavaScript)
+- *Tree-shaking* - Eliminating unused code from bundle
+- *Trampolining* - Technique to implement tail-call optimization in JS
+- *Mix* - Elixir's build tool
+- *Hex* - Elixir package manager
+
+---
+
+Document Version: 1.0
+Last Updated: 2025-11-27
+Next Review: After Phase 0 completion

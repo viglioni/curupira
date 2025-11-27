@@ -1,103 +1,280 @@
 #+title: Curupira
+#+author: Curupira Team
+#+date: 2025-11-27
 
+* About
 
-#+begin_src emacs-lisp :exports result :results output 
-  (let ((default-directory (locate-dominating-file default-directory ".git"))
-        (tag nil))
-    (if default-directory
-        (with-temp-buffer
-          (when (= 0 (call-process "git" nil t nil "describe" "--tags" "--abbrev=0"))
-            (setq tag (string-trim (buffer-string))))
-          (if (and tag (not (string= "" tag)))
-              (print (format"Current GitHub tag: %s" tag))
-            (print "No tags found for this repository")))
-      (print "Not in a git repository")))
+Build client-side web applications with Elixir.
+
+Curupira is a monorepo containing tools for writing frontend applications in Elixir that compile to JavaScript.
+
+* Packages
+
+** curupira_script
+
+Elixir-to-JavaScript transpiler. Modern fork of ElixirScript with support for Elixir 1.17+.
+
+#+begin_src elixir
+# Write Elixir
+defmodule MyApp do
+  def greet(name), do: "Hello, #{name}!"
+end
 #+end_src
 
-#+RESULTS:
-: 
-: "No tags found for this repository"
-
-** About 
-Elixir template to generate a client-side rendered frontend application.
-
-This template is focused on small frontend projects that one usually would write with html + [s]css + ts/js, but here we use elixir instead of js/ts.
-
-Basically we comile elixir into js and that's it.
-
-This library uses:
-#+begin_src emacs-lisp :exports results :results output 
-  (let ((mix-file (expand-file-name "./template/$PROJECT_NAME$/mix.exs")))
-    (if (file-exists-p mix-file)
-        (with-temp-buffer
-          (insert-file-contents mix-file)
-          (goto-char (point-min))
-          (if (re-search-forward "defp deps do\\s-*\\[\\(\\(?:.\\|\n\\)*?\\)\\]\\s-*end" nil t)
-              (let ((deps-text (match-string 1)))
-                (princ deps-text))
-            (message "Could not find deps function in mix.exs")
-            nil))
-      (message "Could not find mix.exs file at %s" mix-file)))
+#+begin_src javascript
+// Get JavaScript
+export default {
+  greet(name) { return `Hello, ${name}!`; }
+};
 #+end_src
 
-#+RESULTS:
-: 
-:       {:elixir_script_web, "~> 0.2"},
-:       {:elixir_script, "~> 0.32.1"},
-:       {:mix_test_watch, "~> 1.0", only: :dev},
-:       {:exsync, "~> 0.4", only: [:dev, :test]}
-:     
+- Status: 🚧 Under development
+- Version: 0.33.0-dev
+- Location: [[file:packages/curupira_script/][packages/curupira_script/]]
 
-A valid note is that =elixir_script_*= doesn't have mantainers, so we can expect some bugs during the elixir <-> js conversion.
+** curupira_web
 
-** Installing the template
+Web APIs and browser integrations for CurupiraScript.
 
-1. Clone this project
-2. Install mix template/generator
-   #+begin_src shell :exports both :results output 
-     mix archive.install hex mix_templates
-     mix archive.install hex mix_generator
-#+end_src
-3. CD into this project
-4. run =mix template.install=
-
-** Using the template
-
-#+begin_src shell :exports both :results output 
-  mix gen curupira project_name
+#+begin_src elixir
+# Browser APIs in Elixir
+Console.log("Hello from Elixir!")
+Document.query_selector("#app")
 #+end_src
 
-and that's it.
+- Status: 🚧 Planned
+- Version: 0.3.0-dev
+- Location: [[file:packages/curupira_web/][packages/curupira_web/]]
 
-** Running your elixir based frontend project
+** curupira_template
 
-First you need to install everything, inside your project:
+Mix template for quickly scaffolding new Curupira projects.
 
-#+begin_src shell :exports both :results output 
-  mix deps.get
-  npm i # yes, of course you must have npm installed
+#+begin_src shell
+mix gen curupira my_app
+cd my_app
+mix watch.compile
 #+end_src
 
-Then
+- Status: ✅ Working (uses ElixirScript 0.32)
+- Version: 1.0.0
+- Location: [[file:packages/curupira_template/][packages/curupira_template/]]
 
-#+begin_src shell :exports both :results output 
-  mix watch.compile # this will open your project on the port on config.exs
-  # this will watch your elixir files for changes and then compile.
-  # might get slow if your project gets too big... in this case you can run the `mix compile` manually and only run the frontend with `npm run dev`
+* Quick Start
+
+** Install Template Generator
+
+#+begin_src shell
+mix archive.install hex mix_templates
+mix archive.install hex mix_generator
 #+end_src
 
-Unfortunatelly, when you kill the =watch.compile= it does not kill the frontend project, to do that you can use =mix port.kill=.
+** Create New Project
 
-The frontend project will execute the function =YourProject.main()=
+#+begin_src shell
+# Clone this repo
+git clone https://github.com/your-org/curupira.git
+cd curupira/packages/curupira_template
 
-You can add the styles in =styles/main.scss=
+# Install the template
+mix template.install
 
-All html files in =html/=.
+# Generate a new project
+cd ~/projects
+mix gen curupira my_app
+cd my_app
 
-If you need to add extra JS, check =js/index.js=.
+# Install dependencies
+mix deps.get
+npm install
 
-** Licence
+# Start development server
+mix watch.compile
+#+end_src
 
-This project is free and it always will be.
+Your app will be available at http://localhost:5050
 
-=GPL-3+= 
+* Repository Structure
+
+#+begin_example
+curupira/
+├── packages/
+│   ├── curupira_script/    # Elixir → JS transpiler
+│   ├── curupira_web/       # Browser/Web APIs
+│   └── curupira_template/  # Project template
+├── examples/
+│   ├── todo_app/           # TodoMVC example
+│   ├── dashboard/          # Real-time dashboard
+│   └── game/               # Browser game
+├── docs/
+│   ├── getting-started.org
+│   └── guides/
+├── scripts/
+│   ├── publish.sh          # Publish to Hex
+│   └── release.sh          # Create releases
+└── .github/
+    └── workflows/          # CI/CD
+#+end_example
+
+* Project Status
+
+** Phase 0: Foundation (Current)
+
+- [X] Monorepo structure
+- [X] Design documentation
+- [ ] Fork ElixirScript
+- [ ] Update to Elixir 1.17+
+- [ ] CI/CD setup
+
+** Phase 1: Modern Elixir (Q1 2025)
+
+- [ ] Stepped ranges (1..10//2)
+- [ ] then/tap functions
+- [ ] Duration type
+- [ ] is_non_struct_map/1 guard
+
+** Phase 2: Stdlib Expansion (Q2 2025)
+
+- [ ] Expanded Enum module
+- [ ] JSON module (Elixir 1.18)
+- [ ] More String/Map functions
+- [ ] Better Date/Time support
+
+** Phase 3: Developer Experience (Q3 2025)
+
+- [ ] Better error messages
+- [ ] Source maps
+- [ ] Faster compilation
+- [ ] Hot reload improvements
+
+See [[file:docs/roadmap.org][docs/roadmap.org]] for detailed timeline.
+
+* Contributing
+
+We welcome contributions! Please see [[file:contributing.org][contributing.org]] for guidelines.
+
+** Development Setup
+
+#+begin_src shell
+# Clone the repo
+git clone https://github.com/your-org/curupira.git
+cd curupira
+
+# Work on a specific package
+cd packages/curupira_script
+mix deps.get
+mix test
+#+end_src
+
+** Priority Areas
+
+- 🔴 Critical: curupira_script Phase 0 (foundation)
+- 🟡 High: Modern Elixir features (Phase 1)
+- 🟢 Medium: Documentation and examples
+- ⚪ Low: curupira_web package
+
+* Publishing
+
+Each package is published independently to Hex.pm with its own version.
+
+#+begin_src shell
+# Publish curupira_script
+cd packages/curupira_script
+mix hex.publish
+
+# Tag the release
+git tag curupira_script-v0.33.0
+git push origin curupira_script-v0.33.0
+#+end_src
+
+See [[file:docs/publishing.org][docs/publishing.org]] for detailed release process.
+
+* Versioning
+
+Each package follows semantic versioning independently:
+
+- =curupira_script=: v0.33.x
+- =curupira_web=: v0.3.x
+- =curupira_template=: v1.0.x
+
+Tags use the format: =<package>-v<version>=
+
+Example tags:
+- =curupira_script-v0.33.0=
+- =curupira_web-v0.3.0=
+- =curupira_template-v1.0.0=
+
+* Resources
+
+** Curupira
+
+- [[https://github.com/your-org/curupira][GitHub Repository]]
+- [[https://github.com/your-org/curupira/issues][Issue Tracker]]
+- [[https://github.com/your-org/curupira/discussions][Discussions]]
+
+** Related Projects
+
+- [[https://github.com/elixirscript/elixirscript][ElixirScript]] - Original project we forked
+- [[https://hexdocs.pm/phoenix_live_view][Phoenix LiveView]] - Server-side alternative
+- [[https://native.live/][LiveView Native]] - Native mobile with LiveView
+
+** Learning Elixir
+
+- [[https://elixir-lang.org/getting-started/introduction.html][Elixir Official Guides]]
+- [[https://elixirschool.com/][Elixir School]]
+- [[https://exercism.org/tracks/elixir][Exercism Elixir Track]]
+
+* FAQ
+
+** Why Curupira instead of ElixirScript?
+
+ElixirScript hasn't been updated since 2018 and doesn't support modern Elixir features. Curupira is actively maintained and targets Elixir 1.17+.
+
+** Why not Phoenix LiveView?
+
+LiveView is server-rendered. Curupira is for client-side SPAs that run entirely in the browser. Different use cases!
+
+** Can I use this in production?
+
+Not yet! We're in active development. The template works but uses old ElixirScript. Wait for curupira_script v0.33+.
+
+** Does this support React/Vue/etc?
+
+Not out of the box, but you can integrate. We'll provide examples and bindings in the future.
+
+** What about TypeScript definitions?
+
+Planned! We'll generate =.d.ts= files from Elixir =@spec= annotations.
+
+* License
+
+GPL-3.0+ - See [[file:LICENSE][LICENSE]] for details.
+
+This project is and always will be free software.
+
+* Credits
+
+*Curupira* is named after the Brazilian folklore creature who protects the forests.
+
+*Built on the shoulders of giants:*
+
+- [[https://github.com/elixirscript/elixirscript][ElixirScript]] by Bryan Joseph - Original transpiler
+- [[https://elixir-lang.org/][Elixir]] by José Valim and contributors
+- [[https://github.com/estree/estree][ESTree]] - JavaScript AST specification
+
+*Contributors:*
+
+See [[file:contributors.org][contributors.org]] for the full list.
+
+* Contact
+
+- Email: curupira@example.com
+- Twitter: [[https://twitter.com/curupira_dev][@curupira_dev]]
+- Discord: [[https://discord.gg/curupira][Join our server]]
+
+---
+
+Made with ❤️ by the Curupira team
+
+Status: 🚧 Under Active Development
+Last Updated: 2025-11-27

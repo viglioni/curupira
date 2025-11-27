@@ -1,0 +1,214 @@
+#+title: Claude Code Context Files
+#+date: 2025-11-27
+
+* Welcome
+
+This directory contains comprehensive context for Claude Code sessions working on Curupira.
+
+* Files in This Directory
+
+** [[file:claude.md][claude.md]] 🎯 START HERE
+
+Main context file for Claude Code. Read this first in every new session.
+
+Contains:
+- Project mission and overview
+- Repository structure
+- Current phase and priorities
+- Key decisions (summarized)
+- Common development tasks
+- How to help effectively
+
+Format: Markdown (exception to .org rule, for Claude Code compatibility)
+
+** [[file:design.org][design.org]] 📐 TECHNICAL DETAILS
+
+Comprehensive technical design document.
+
+Contains:
+- Complete architecture overview
+- Implementation phases (detailed roadmap)
+- Translation strategy (Elixir → JavaScript)
+- Runtime library specifications
+- Module reference
+- Testing strategy
+
+Format: Org mode
+
+** [[file:decisions.org][decisions.org]] 🤔 WHY WE CHOSE THIS
+
+Architecture decision records (ADRs).
+
+Contains:
+- Key technical decisions
+- Rationale for each decision
+- Alternatives considered
+- Trade-offs (pros/cons)
+- Current status
+
+Format: Org mode
+
+** [[file:quickref.org][quickref.org]] ⚡ QUICK LOOKUP
+
+Quick reference cheat sheet.
+
+Contains:
+- Current status snapshot
+- Package versions
+- Common commands
+- Phase checklist
+- FAQ
+- Debugging tips
+
+Format: Org mode
+
+* Reading Order for New Sessions
+
+1. *First time ever:* Read all files in order
+   - =claude.md= (30 min)
+   - =design.org= (45 min)
+   - =decisions.org= (30 min)
+   - =quickref.org= (15 min)
+
+2. *Starting new session:* Quick refresh
+   - =claude.md= - Skim "Current Priority" section
+   - =quickref.org= - Check current status
+   - Ask user what to work on
+
+3. *During work:* Reference as needed
+   - =design.org= - For implementation details
+   - =decisions.org= - For "why" questions
+   - =quickref.org= - For quick lookups
+
+* Updating These Files
+
+** When to Update
+
+Update these files when:
+- Project status changes (new phase)
+- Major decisions are made
+- Architecture changes
+- New features added
+- After completing milestones
+
+** Who Updates
+
+- Developers working on Curupira
+- Claude Code (when prompted)
+- Tech lead reviewing changes
+
+** How to Update
+
+1. Edit the relevant =.org= or =.md= file
+2. Update "Last Updated" date
+3. Keep changes concise
+4. Commit with descriptive message
+
+Example:
+#+begin_src shell
+git add .llm/
+git commit -m "docs: update context files after Phase 0 completion"
+#+end_src
+
+* File Sizes
+
+Approximate:
+- =claude.md= - ~15 KB (comprehensive, still manageable)
+- =design.org= - ~25 KB (detailed technical spec)
+- =decisions.org= - ~15 KB (decision records)
+- =quickref.org= - ~8 KB (quick reference)
+
+Total: ~63 KB of context
+
+All files are designed to fit comfortably in Claude Code's context window.
+
+* Context Loading Strategy
+
+Claude Code automatically includes files from =.llm/= directory.
+
+For best results:
+1. Claude reads =claude.md= first (comprehensive overview)
+2. References other files as needed
+3. Asks user for clarification when context is unclear
+
+* Maintenance
+
+** Regular Reviews
+
+Review and update these files:
+- After each phase completion
+- Monthly (if no phase changes)
+- When onboarding new contributors
+- When major decisions are made
+
+** Archiving
+
+When content becomes outdated:
+- Move to =.llm/archive/= directory
+- Keep for historical reference
+- Update current files accordingly
+
+** Version Control
+
+These files are part of the git repository:
+- Track changes in git history
+- Can reference specific versions
+- Easy to see evolution of decisions
+
+* Tips for Claude Code
+
+** Reading These Files
+
+- Don't read everything every time
+- Focus on relevant sections
+- Use search (Ctrl+F) to find specific topics
+- Ask user to clarify if something is unclear
+
+** Using This Context
+
+- Refer to specific sections when explaining
+- Quote decisions when making choices
+- Point user to relevant docs
+- Update files when things change
+
+** When Context is Insufficient
+
+If these files don't answer your question:
+1. Check the actual code
+2. Read ElixirScript source (for reference)
+3. Ask the user
+4. Document the answer for next time
+
+* Meta
+
+** Why This Directory Exists
+
+To provide persistent, comprehensive context across Claude Code sessions.
+
+Without it:
+- Every session starts from zero
+- Repeat same explanations
+- Lose track of decisions
+- Inconsistent approach
+
+With it:
+- Instant context loading
+- Consistent decision-making
+- Clear priorities
+- Better collaboration
+
+** Future Improvements
+
+Potential additions:
+- =examples.org= - Code examples
+- =troubleshooting.org= - Common issues and fixes
+- =api.org= - API reference
+- =migration.org= - ElixirScript → CurupiraScript migration guide
+
+Add as needed, don't over-engineer.
+
+---
+
+Last Updated: 2025-11-27
+
+Happy coding! 🚀
