@@ -135,31 +135,53 @@ mix watch.compile  # Auto-compile Elixir → JS + webpack dev server
 
 ## 🗺️ Development Roadmap
 
-### Phase 0: Foundation (Current - Week 1-2)
+### Phase 0: Architecture Study (Current - Week 1-4)
 
-**Goal:** Get ElixirScript running with Elixir 1.17+
+**Goal:** Deeply understand ElixirScript before building fresh implementation
 
-- [ ] **Fork ElixirScript** into `packages/curupira_script/`
+**Strategy Change:** After discussion, we decided to study ElixirScript thoroughly, then build a fresh implementation while stealing the hard parts (pattern matching, type definitions). This gives us:
+- ✅ Clean, modern codebase
+- ✅ Deep understanding before coding
+- ✅ Reuse proven solutions (Tailored library)
+- ✅ ElixirScript tests validate behavior
+
+**Tasks:**
+- [ ] **Clone ElixirScript as reference**
   - Source: https://github.com/elixirscript/elixirscript
-  - Copy entire codebase
-  - Update copyright/attribution
-- [ ] **Update dependencies** in mix.exs
-  - Bump Elixir to `~> 1.17`
-  - Update `estree` to latest
-  - Add `jason` for JSON
-- [ ] **Fix compilation errors**
-  - Resolve deprecation warnings
-  - Update for modern Elixir APIs
-- [ ] **Get tests passing**
-  - Run `mix test`
-  - Fix broken tests
-  - Document known issues
-- [ ] **Setup CI/CD**
-  - GitHub Actions
-  - Test on Elixir 1.17, 1.18, 1.19
-  - Test on OTP 26, 27
+  - Clone into `packages/curupira_script/reference/`
+  - Run their test suite locally
+- [ ] **Document architecture** in `.llm/elixirscript-study.org`
+  - BEAM AST extraction (how debug_info works)
+  - Translation pipeline (passes, AST → ESTree)
+  - Pattern matching (Tailored library)
+  - Hard problems & solutions (trampolining, protocols)
+- [ ] **Map modern features** to implementation approach
+  - Stepped ranges, Duration, JSON
+  - How to implement each
+- [ ] **Create implementation plan**
+  - What to steal (Tailored, types, tests)
+  - What to rebuild (compiler, runtime)
+  - Project structure
 
-### Phase 1: Modern Elixir Syntax (Week 3-6)
+### Phase 1: Greenfield Build (Week 5-8)
+
+**Goal:** Build fresh implementation using ElixirScript as reference
+
+**What to Steal:**
+- Pattern matching library (Tailored) - don't reinvent
+- Type definitions (Tuple, BitString classes) - working
+- Test suite - validate our output matches theirs
+- Trampolining, protocol dispatch - solved problems
+
+**What to Build Fresh:**
+- Compiler pipeline (modern Elixir patterns)
+- Mix integration (modern `Mix.Task.Compiler`)
+- AST translation (cleaner code)
+- Runtime stdlib (modern JS)
+
+**Initial Target:** Compile one simple module to JS
+
+### Phase 2: Modern Elixir Syntax (Week 9-12)
 
 **Goal:** Support Elixir 1.12-1.17 features
 
@@ -645,7 +667,7 @@ npm test
 
 **Remember:** We're building this incrementally. Small steps, working code, constant progress.
 
-**Current Phase:** Phase 0 - Foundation
-**Next Task:** Fork ElixirScript into packages/curupira_script/
+**Current Phase:** Phase 0 - Architecture Study
+**Next Task:** Clone ElixirScript as reference, begin documentation
 
 Good luck! 🚀

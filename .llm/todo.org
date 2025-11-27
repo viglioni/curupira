@@ -1,0 +1,381 @@
+#+title: Curupira TODO
+#+author: Curupira Team
+#+date: 2025-11-27
+#+startup: content
+
+* DOING Phase 0: Architecture Study [0/7]
+:PROPERTIES:
+:CREATED: 2025-11-27
+:END:
+
+Goal: Deeply understand ElixirScript before building fresh implementation.
+
+** TODO Clone ElixirScript as reference
+:LOGBOOK:
+:END:
+
+#+begin_src shell
+cd packages/curupira_script
+git clone https://github.com/elixirscript/elixirscript.git reference
+#+end_src
+
+- [ ] Clone repo
+- [ ] Read README and docs
+- [ ] Run their test suite locally
+- [ ] Explore codebase structure
+
+** TODO Document BEAM AST Extraction
+
+Study =lib/elixir_script/beam.ex=
+
+Questions to answer:
+- How does debug_info extraction work?
+- What does the AST look like?
+- How are protocols handled?
+- How are String/Agent overridden?
+
+Document in: =.llm/elixirscript-study.org=
+
+** TODO Document Translation Pipeline
+
+Study =lib/elixir_script/passes/=
+
+Components to understand:
+- [ ] FindUsedModules - How does dependency crawling work?
+- [ ] FindUsedFunctions - How does tree-shaking work?
+- [ ] Translate - How is AST converted to ESTree?
+- [ ] Output - How is JS code generated?
+
+Document architecture diagrams.
+
+** TODO Document Pattern Matching Implementation
+
+Study =lib/elixir_script/passes/translate/forms/pattern.ex=
+
+And the JS runtime: =priv/javascript/= (Tailored library)
+
+Questions:
+- How are patterns compiled?
+- What does the Tailored library do?
+- How are guards handled?
+- Can we reuse this directly?
+
+Decision: Likely steal Tailored wholesale.
+
+** TODO Document Hard Problems & Solutions
+
+Focus on:
+- [ ] Tail-call optimization (trampolining)
+- [ ] Protocol dispatch
+- [ ] Immutability enforcement
+- [ ] Atom/Symbol mapping
+- [ ] Function arity handling
+
+These are solved problems - we should understand their solutions.
+
+** TODO Map Modern Elixir Features to Implementation
+
+What needs to change for Elixir 1.17+:
+- [ ] Stepped ranges (=1..10//2=)
+- [ ] =then/2= and =tap/2=
+- [ ] =is_non_struct_map/1= guard
+- [ ] Duration type
+- [ ] JSON module
+
+How would we implement each? Document approach.
+
+** TODO Create Implementation Plan
+
+Based on study, decide:
+- [ ] What to steal from ElixirScript (Tailored, types, etc.)
+- [ ] What to rebuild fresh (compiler pipeline, etc.)
+- [ ] Project structure for new codebase
+- [ ] Test strategy (use ElixirScript tests?)
+
+Document in: =.llm/implementation-plan.org=
+
+* TODO Phase 1: Greenfield Build [0/5]
+:PROPERTIES:
+:CREATED: 2025-11-27
+:END:
+
+Start: After Phase 0 complete (~Week 4)
+
+** TODO Setup Fresh Project Structure
+
+#+begin_src
+packages/curupira_script/
+├── lib/
+│   └── curupira_script/
+│       ├── compiler.ex       # NEW - Clean implementation
+│       ├── beam.ex           # Adapted from ElixirScript
+│       └── passes/           # NEW - Modern pipeline
+├── priv/
+│   └── javascript/
+│       ├── lib/
+│       │   ├── pattern.js    # STOLEN from Tailored
+│       │   ├── types.js      # ADAPTED from ElixirScript
+│       │   └── core.js       # NEW - Modern runtime
+│       └── tests/
+├── test/                     # Use ElixirScript tests as base
+└── mix.exs                   # NEW
+#+end_src
+
+** TODO Implement Core Compiler Pipeline
+
+Minimal working version:
+- [ ] Entry point (=CurupiraScript.compile/2=)
+- [ ] BEAM AST extraction (adapt from ElixirScript)
+- [ ] Simple module translation (one module, no deps)
+- [ ] ESTree generation
+- [ ] JS output
+
+Goal: Compile one simple Elixir module to JS.
+
+** TODO Integrate Pattern Matching Library
+
+- [ ] Copy Tailored library
+- [ ] Test it works
+- [ ] Adapt if needed for modern JS
+- [ ] Document API
+
+** TODO Implement Basic Runtime
+
+Minimum viable runtime:
+- [ ] Kernel type checks (=is_atom=, =is_list=, etc.)
+- [ ] Tuple, Range types
+- [ ] Basic Enum (=map=, =filter=, =reduce=)
+- [ ] Basic String functions
+
+Goal: Run simple programs.
+
+** TODO Setup Testing Infrastructure
+
+- [ ] Copy ElixirScript test structure
+- [ ] Adapt tests for our implementation
+- [ ] Add new tests for modern features
+- [ ] Setup CI
+
+* TODO Phase 2: Modern Elixir Features [0/4]
+
+** TODO Stepped Ranges (1..10//2)
+
+- [ ] Update AST pattern matching
+- [ ] Implement =Range.new/3= with step
+- [ ] Tests
+- [ ] Documentation
+
+** TODO then/2 and tap/2
+
+- [ ] Implement in runtime
+- [ ] Test with pipe operator
+- [ ] Documentation
+
+** TODO is_non_struct_map/1 Guard
+
+- [ ] Add guard translation
+- [ ] Implement runtime check
+- [ ] Tests
+
+** TODO Duration Type
+
+- [ ] Create Duration struct
+- [ ] Implement =Duration.new!/1=
+- [ ] Implement =Date/Time/DateTime.shift/2=
+- [ ] Tests
+
+* TODO Phase 3: Stdlib Expansion [0/4]
+
+** TODO Enum Module Expansion
+
+Target: 70 functions (from ~20)
+
+High priority:
+- [ ] =Enum.product/1=
+- [ ] =Enum.zip_with/2=
+- [ ] =Enum.min_max/1=
+- [ ] =Enum.frequencies/1=
+- [ ] =Enum.group_by/2=
+- [ ] =Enum.chunk_every/2=
+
+** TODO String Module Expansion
+
+Target: 40 functions
+
+- [ ] Trim functions
+- [ ] Pad functions
+- [ ] Replace prefix/suffix
+- [ ] Graphemes
+
+** TODO Map Module Expansion
+
+Target: 30 functions
+
+- [ ] =Map.filter/2=
+- [ ] =Map.reject/2=
+- [ ] =Map.split/2=
+- [ ] =Map.take/2=
+- [ ] =Map.drop/2=
+
+** TODO JSON Module (NEW in 1.18)
+
+- [ ] =JSON.encode/1=
+- [ ] =JSON.encode!/1=
+- [ ] =JSON.decode/1=
+- [ ] =JSON.decode!/1=
+- [ ] Atom key conversion
+- [ ] Tests
+
+* TODO Phase 4: Developer Experience [0/4]
+
+** TODO Better Error Messages
+
+- [ ] Add source context
+- [ ] Include file/line numbers
+- [ ] Helpful hints
+- [ ] Error catalog docs
+
+** TODO Source Maps
+
+- [ ] Research ESTree → source map
+- [ ] Implement generation
+- [ ] Test with DevTools
+- [ ] Add =--source-maps= flag
+
+** TODO Incremental Compilation
+
+- [ ] Track file mtimes
+- [ ] Skip unchanged modules
+- [ ] Detect transitive changes
+- [ ] =--force= flag
+
+** TODO Watch Mode
+
+- [ ] Emit compilation events
+- [ ] Fast recompilation
+- [ ] Integration with exsync
+
+* TODO Phase 5: Tooling [0/3]
+
+** TODO Mix Compiler
+
+- [ ] Implement =Mix.Task.Compiler= behaviour
+- [ ] Proper diagnostics
+- [ ] =mix clean= support
+
+** TODO CLI Tool
+
+- [ ] Create escript
+- [ ] Argument parsing
+- [ ] Watch mode
+- [ ] Help docs
+
+** TODO Bundler Examples
+
+- [ ] Vite example
+- [ ] esbuild example
+- [ ] Rollup example
+- [ ] webpack example
+
+* Backlog / Nice to Have
+
+** Protocol Improvements
+
+- [ ] Review implementation
+- [ ] Test with modern protocols
+- [ ] =@fallback_to_any= support
+
+** Agent State Management
+
+- [ ] Review implementation
+- [ ] Use JS Map internally
+- [ ] Document synchronous behavior
+
+** TypeScript Definitions
+
+- [ ] Map Elixir → TS types
+- [ ] Generate from =@spec=
+- [ ] Emit =.d.ts= files
+
+** Performance Optimization
+
+- [ ] Benchmark compilation speed
+- [ ] Optimize hot paths
+- [ ] Reduce bundle size
+- [ ] Profile runtime performance
+
+* Completed
+
+** DONE Monorepo Structure
+CLOSED: [2025-11-27]
+
+- [X] Create =packages/= directory
+- [X] Move template to =packages/curupira_template/=
+- [X] Create =packages/curupira_script/= (empty)
+- [X] Create =packages/curupira_web/= (empty)
+
+** DONE Comprehensive Documentation
+CLOSED: [2025-11-27]
+
+- [X] =.llm/claude.md= - Main context
+- [X] =.llm/design.org= - Technical design
+- [X] =.llm/decisions.org= - Architecture decisions
+- [X] =.llm/quickref.org= - Quick reference
+- [X] =.llm/readme.org= - Index
+- [X] =readme.org= - Updated main README
+
+** DONE Strategy Decision
+CLOSED: [2025-11-27]
+
+Decided on hybrid approach:
+- Study ElixirScript deeply (document architecture)
+- Build fresh implementation
+- Steal hard parts (Tailored, types)
+- Use ElixirScript tests for validation
+
+* Notes
+
+** What to Steal from ElixirScript
+
+Don't reinvent these:
+- Pattern matching library (Tailored) - too complex
+- Type definitions (Tuple, BitString) - working well
+- Test suite - validate behavior
+- Trampolining implementation - solved problem
+
+** What to Build Fresh
+
+Better to rebuild:
+- Compiler pipeline (cleaner with modern Elixir)
+- Mix integration (modern =Mix.Task.Compiler=)
+- AST translation (can be cleaner)
+- Stdlib implementations (modern JS)
+
+** Study Resources
+
+- ElixirScript repo: =packages/curupira_script/reference/=
+- ElixirScript docs: https://hexdocs.pm/elixir_script/
+- Tailored (pattern matching): https://github.com/elixirscript/tailored
+- ESTree spec: https://github.com/estree/estree
+
+** Progress Tracking
+
+Update this file frequently:
+- Mark tasks with TODO/DOING/DONE
+- Add notes under tasks
+- Update dates
+- Move completed items to Completed section
+
+** How to Use This File
+
+In Emacs:
+- =S-<right>= / =S-<left>= - Cycle TODO states
+- =TAB= - Fold/unfold sections
+- =C-c C-c= - Toggle checkboxes
+- =C-c C-x C-s= - Mark subtree DONE
+- =C-c a t= - Agenda view (all TODOs)
+
+---
+
+Last Updated: 2025-11-27
+Current Phase: Phase 0 - Architecture Study

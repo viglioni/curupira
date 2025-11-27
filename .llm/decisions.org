@@ -770,7 +770,7 @@ Tag format:
 
 | Decision | Status | Impact |
 |----------+--------+--------|
-| Fork ElixirScript | ✅ Accepted | High - Core strategy |
+| Study → Build Fresh (Hybrid) | ✅ Accepted | High - Core strategy |
 | ES Modules only | ✅ Accepted | Medium - Simpler codebase |
 | BEAM debug_info AST | ✅ Accepted | High - No macro expansion needed |
 | Runtime pattern matching | ✅ Accepted | Medium - Easier implementation |
@@ -780,6 +780,105 @@ Tag format:
 | One file per module | ✅ Accepted | Medium - Better tree-shaking |
 | ~30% stdlib coverage | ✅ Accepted | High - Pragmatic scope |
 | Monorepo + independent versions | ✅ Accepted | Medium - Better DX |
+
+* Decision 11: Study → Build Fresh (Hybrid Approach)
+
+** Decision
+
+Study ElixirScript architecture deeply, then build fresh implementation while selectively stealing proven solutions.
+
+Not a direct fork, not a complete rewrite from zero knowledge.
+
+** Rationale
+
+After discussion, we realized:
+- We must deeply understand ElixirScript anyway (whether we fork or rebuild)
+- ElixirScript is 7 years old with outdated patterns
+- Clean slate with modern Elixir might be faster than refactoring
+- But we don't need to reinvent hard problems (pattern matching, etc.)
+
+Best of both worlds: Document everything, then build clean with stolen parts.
+
+** What This Means
+
+Phase 0 becomes *Architecture Study* (2-4 weeks):
+- Clone ElixirScript as reference
+- Document how it works thoroughly
+- Understand hard problems and their solutions
+- Plan what to steal vs rebuild
+
+Phase 1 becomes *Greenfield Build*:
+- Fresh codebase in =packages/curupira_script/=
+- Modern Elixir patterns
+- Steal: Tailored (pattern matching), type definitions, test suite
+- Rebuild: Compiler pipeline, runtime, stdlib
+
+** Alternatives Considered
+
+*** Direct fork (original plan)
+
+Pros:
+- Working code day 1
+- Tests validate changes
+- Faster to first release
+
+Cons:
+- Inherit technical debt
+- Constrained by old architecture
+- Heavy refactoring needed anyway
+
+*** Complete rewrite from scratch
+
+Pros:
+- Perfect architecture
+- Modern patterns throughout
+
+Cons:
+- 18-24 months to parity
+- Must re-solve all hard problems
+- High risk
+
+** Trade-offs
+
+Pros:
+- ✅ Clean, modern codebase
+- ✅ Deep understanding before building
+- ✅ Don't reinvent hard parts
+- ✅ ElixirScript tests validate behavior
+- ✅ Modern Elixir from day 1
+
+Cons:
+- ❌ Longer to first working version (4-6 weeks vs 2 weeks)
+- ❌ More upfront research
+- ❌ Risk of missing edge cases
+
+** Status
+
+*Accepted* (2025-11-27)
+
+Mitigation for longer timeline:
+- ElixirScript reference always available
+- Their tests catch any behavioral differences
+- Can peek at their implementation when stuck
+- Stealing proven parts (Tailored) reduces risk
+
+** What to Steal
+
+Don't reinvent:
+- Pattern matching library (Tailored) - too complex, working
+- Type definitions (Tuple, BitString, etc.) - proven
+- Test suite - validate our behavior
+- Trampolining implementation - solved problem
+- Protocol dispatch mechanism - working
+
+** What to Build Fresh
+
+Better to rebuild:
+- Compiler pipeline - modern =Mix.Task.Compiler=
+- AST translation - cleaner with new tools
+- Runtime stdlib - modern JS (ES2020+)
+- Mix integration - use latest Mix features
+- Error messages - better from start
 
 * Future Decisions
 

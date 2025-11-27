@@ -62,6 +62,19 @@ Contains:
 
 Format: Org mode
 
+** [[file:todo.org][todo.org]] ✅ TASK TRACKING
+
+Detailed TODO list for tracking progress.
+
+Contains:
+- Phase 0: Architecture Study tasks
+- Phase 1+: Implementation tasks
+- Backlog items
+- Completed items
+- Progress tracking
+
+Format: Org mode (Emacs org-mode compatible)
+
 * Reading Order for New Sessions
 
 1. *First time ever:* Read all files in order

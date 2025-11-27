@@ -17,8 +17,9 @@ When starting a new Claude Code session:
 
 ** Current Status (2025-11-27)
 
-- Phase: *Phase 0 - Foundation*
-- Next Task: *Fork ElixirScript into packages/curupira_script/*
+- Phase: *Phase 0 - Architecture Study*
+- Next Task: *Clone ElixirScript as reference, begin documentation*
+- Strategy: *Study deeply → Build fresh (hybrid approach)*
 - Working Packages: =curupira_template= ✅
 - In Development: =curupira_script= 🚧
 - Planned: =curupira_web= ⏳
@@ -57,7 +58,9 @@ Examples:
 
 | Decision | Choice | Why |
 |----------+--------+-----|
-| Base | Fork ElixirScript | 80% done, proven architecture |
+| *Approach* | *Study → Build Fresh* | *Deep understanding + clean code* |
+| What to Steal | Tailored, types, tests | Don't reinvent hard parts |
+| What to Build | Compiler, runtime | Modern Elixir patterns |
 | Output | ES Modules only | Modern standard, simpler |
 | AST | BEAM debug_info | Macros pre-expanded |
 | Patterns | Runtime library | Easier to implement correctly |
@@ -153,14 +156,25 @@ git push origin curupira_script-v0.33.0
 
 ** Phase Checklist
 
-*** Phase 0: Foundation ⏳ IN PROGRESS
+*** Phase 0: Architecture Study ⏳ IN PROGRESS
 
-- [ ] Fork ElixirScript to =packages/curupira_script/=
-- [ ] Update =mix.exs= (Elixir 1.17, deps)
-- [ ] Fix compilation errors
-- [ ] Get tests passing
-- [ ] Setup CI/CD
-- [ ] Update docs
+- [ ] Clone ElixirScript as reference (=packages/curupira_script/reference/=)
+- [ ] Document BEAM AST extraction
+- [ ] Document translation pipeline
+- [ ] Document pattern matching (Tailored)
+- [ ] Document hard problems & solutions
+- [ ] Map modern Elixir features to implementation
+- [ ] Create implementation plan
+
+See [[file:todo.org][todo.org]] for detailed task tracking.
+
+*** Phase 1: Greenfield Build
+
+- [ ] Setup fresh project structure
+- [ ] Implement core compiler pipeline
+- [ ] Integrate Tailored (pattern matching)
+- [ ] Implement basic runtime
+- [ ] Setup testing infrastructure
 
 *** Phase 1: Modern Elixir
 
@@ -364,19 +378,21 @@ mix compile
 
 ** Next Steps (Priority Order)
 
-1. *Fork ElixirScript* into =packages/curupira_script/=
-2. *Update dependencies* (Elixir 1.17, latest estree, etc.)
-3. *Fix compilation* (resolve errors, warnings)
-4. *Get tests passing* (or document failures)
-5. *Setup CI/CD* (GitHub Actions)
+1. *Clone ElixirScript* as reference into =packages/curupira_script/reference/=
+2. *Study & document* BEAM AST extraction
+3. *Study & document* translation pipeline
+4. *Study & document* pattern matching (Tailored library)
+5. *Document* hard problems (trampolining, protocols, etc.)
+6. *Plan implementation* (what to steal vs rebuild)
+7. *Create* fresh project structure
 
 After Phase 0:
-6. Add stepped ranges
-7. Add then/tap
-8. Add Duration type
-9. Expand stdlib
+8. Build core compiler pipeline
+9. Add pattern matching (Tailored)
+10. Implement basic runtime
+11. Add modern Elixir features
 
-See =design.org= for full roadmap.
+See =design.org= for full roadmap and [[file:todo.org][todo.org]] for detailed tasks.
 
 ** Emergency Contacts
 
