@@ -1,0 +1,191 @@
+#+title: CurupiraScript
+#+author: Curupira Team
+#+date: 2025-11-27
+
+* CurupiraScript
+
+Elixir to JavaScript transpiler for client-side applications.
+
+Modern fork of [[https://github.com/elixirscript/elixirscript][ElixirScript]] supporting Elixir 1.17+.
+
+** Status
+
+🚧 *Under Development* - Phase 0: Architecture Study
+
+Currently studying ElixirScript architecture to build fresh implementation.
+
+** What is CurupiraScript?
+
+Compiles Elixir code to JavaScript, allowing you to write client-side web applications in Elixir.
+
+#+begin_src elixir
+# Write Elixir
+defmodule MyApp do
+  def greet(name) do
+    "Hello, #{name}!"
+  end
+end
+#+end_src
+
+#+begin_src javascript
+// Get JavaScript
+export default {
+  greet(name) {
+    return `Hello, ${name}!`;
+  }
+};
+#+end_src
+
+** Installation
+
+Add to your =mix.exs=:
+
+#+begin_src elixir
+def deps do
+  [
+    {:curupira_script, "~> 0.33"}
+  ]
+end
+#+end_src
+
+** Configuration
+
+#+begin_src elixir
+# mix.exs
+def project do
+  [
+    compilers: Mix.compilers() ++ [:curupira_script],
+    curupira_script: [
+      input: MyApp,
+      output: "assets/js"
+    ]
+  ]
+end
+#+end_src
+
+** Usage
+
+#+begin_src shell
+mix compile
+#+end_src
+
+Generated files will be in =assets/js/Elixir.MyApp.js=
+
+** Features
+
+*** Supported ✅
+
+- Basic data types (integers, floats, strings, atoms, lists, maps, tuples)
+- *Structs* (CRITICAL for DOM APIs)
+- Functions with pattern matching and guards
+- Pipe operator
+- Comprehensions
+- Control flow (if, case, cond, with)
+
+*** Planned 🚧
+
+- Stepped ranges (=1..10//2=)
+- =then/2= and =tap/2=
+- Duration type
+- JSON module
+- Expanded stdlib
+
+*** Not Supported ❌
+
+- GenServer, Supervisor (no OTP)
+- spawn, send, receive (no processes)
+- Macros (use pre-expanded AST)
+
+** Development
+
+*** Prerequisites
+
+- Elixir 1.17+
+- Erlang/OTP 26+
+- Node.js 18+ (for JavaScript runtime tests)
+
+*** Setup
+
+#+begin_src shell
+# Install dependencies
+mix deps.get
+
+# Run tests
+mix test
+
+# Run type checking
+mix dialyzer
+
+# Format code
+mix format
+#+end_src
+
+*** Project Structure
+
+#+begin_example
+curupira_script/
+├── lib/
+│   └── curupira_script/          # Compiler modules (to be built)
+│       ├── compiler.ex
+│       ├── beam.ex
+│       └── passes/
+├── priv/
+│   └── javascript/
+│       ├── lib/                  # Runtime library
+│       └── tests/                # JS tests
+├── test/                         # Elixir tests
+├── reference/                    # ElixirScript clone (for study)
+└── mix.exs
+#+end_example
+
+** Roadmap
+
+*** Phase 0: Architecture Study (Current)
+
+- [ ] Clone ElixirScript as reference
+- [ ] Document BEAM AST extraction
+- [ ] Document translation pipeline
+- [ ] Document pattern matching
+- [ ] Plan implementation
+
+*** Phase 1: Greenfield Build
+
+- [ ] Core compiler pipeline
+- [ ] Pattern matching (using Tailored)
+- [ ] Basic runtime
+- [ ] Struct support
+
+*** Phase 2: Modern Elixir
+
+- [ ] Stepped ranges
+- [ ] then/tap
+- [ ] Duration type
+- [ ] JSON module
+
+See [[file:../../.llm/todo.org][todo.org]] for detailed tasks.
+
+** Documentation
+
+- [[file:../../.llm/expectations.org][expectations.org]] - What we're building
+- [[file:../../.llm/design.org][design.org]] - Technical design
+- [[file:../../.llm/decisions.org][decisions.org]] - Architecture decisions
+
+** Contributing
+
+See [[file:../../contributing.org][contributing.org]] (to be created)
+
+** License
+
+MIT - See [[file:../../LICENSE][LICENSE]]
+
+** Credits
+
+Modern fork of [[https://github.com/elixirscript/elixirscript][ElixirScript]] by Bryan Joseph.
+
+Part of the [[file:../../readme.org][Curupira project]].
+
+---
+
+*Status:* 🚧 Under Active Development
+*Version:* 0.33.0-dev
+*Last Updated:* 2025-11-27

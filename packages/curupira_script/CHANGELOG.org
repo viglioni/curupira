@@ -1,0 +1,68 @@
+#+title: CurupiraScript Changelog
+#+date: 2025-11-27
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [[https://keepachangelog.com/en/1.0.0/][Keep a Changelog]],
+and this project adheres to [[https://semver.org/spec/v2.0.0.html][Semantic Versioning]].
+
+* Unreleased
+
+** Added
+- Initial project structure
+- Basic =CurupiraScript= module with =compile/2= and =version/0=
+- Mix project configuration
+- Test suite setup
+- Documentation structure
+
+** Changed
+- N/A
+
+** Deprecated
+- N/A
+
+** Removed
+- N/A
+
+** Fixed
+- N/A
+
+** Security
+- N/A
+
+* [0.33.0-dev] - In Development
+
+*** Phase 0: Architecture Study
+
+Currently studying ElixirScript architecture to build fresh implementation.
+
+Tasks:
+- [ ] Clone ElixirScript as reference
+- [ ] Document BEAM AST extraction
+- [ ] Document translation pipeline
+- [ ] Document pattern matching (Tailored library)
+- [ ] Document hard problems & solutions
+- [ ] Map modern Elixir features
+- [ ] Create implementation plan
+
+* Notes
+
+** Versioning Strategy
+
+We use semantic versioning:
+- =0.x.y= - Development versions (API may change)
+- =1.x.y= - Stable releases
+- Breaking changes increment major version
+
+** Release Process
+
+1. Update version in =mix.exs=
+2. Update this changelog
+3. Commit: =git commit -m "chore: release v0.33.0"=
+4. Tag: =git tag curupira_script-v0.33.0=
+5. Push: =git push origin curupira_script-v0.33.0=
+6. Publish: =mix hex.publish=
+
+---
+
+Last Updated: 2025-11-27
