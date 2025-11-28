@@ -76,9 +76,8 @@ defmodule CurupiraScript do
 
   """
   @spec compile(module() | [module()], keyword()) :: {:ok, map()} | {:error, term()}
-  def compile(_modules, _opts \\ []) do
-    # TODO: Implement after Phase 0 study
-    {:error, :not_implemented}
+  def compile(modules, opts \\ []) do
+    CurupiraScript.Compiler.compile(modules, opts)
   end
 
   @doc """

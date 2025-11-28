@@ -1,0 +1,269 @@
+#+title: ElixirScript Architecture Study
+#+date: 2025-11-27
+
+* Overview
+
+Studied ElixirScript codebase at ~/personal/elixirscript to identify reusable components for Curupira implementation.
+
+* Compilation Pipeline
+
+** Flow
+
+1. *Compiler Entry* (=ElixirScript.Compiler=)
+   - Takes module(s) or file path as input
+   - Manages State via GenServer
+   - Orchestrates all passes
+
+2. *Find Used Modules* (=ElixirScript.FindUsedModules=)
+   - Crawls entry modules recursively
+   - Finds all dependencies
+   - Stores in State
+
+3. *Find Used Functions* (=ElixirScript.FindUsedFunctions=)
+   - Optional tree-shaking pass
+   - Identifies which functions are actually called
+   - Protocols take everything (can't determine usage statically)
+
+4. *Translate* (=ElixirScript.Translate=)
+   - Converts Elixir AST → ESTree AST
+   - Handles modules, functions, forms
+
+5. *Output* (=ElixirScript.Output=)
+   - ESTree AST → JavaScript code
+   - Writes files to disk
+   - Handles ES modules
+
+** State Management
+
+Uses GenServer (=ElixirScript.State=) to store:
+- Module info
+- Used modules/functions
+- In-memory compiled modules
+- Configuration options
+
+* Key Modules We Can Leverage
+
+** 1. BEAM AST Extraction (=ElixirScript.Beam=)
+
+*** Critical Feature
+Uses Erlang 20+ debug_info feature to extract *macro-expanded AST* from .beam files.
+
+#+begin_src elixir
+# From ElixirScript.Beam
+def debug_info(module) when is_atom(module) do
+  case :code.get_object_code(module) do
+    {_, beam, beam_path} ->
+      # Get debug info chunk from BEAM file
+      {:beam_lib.chunks(beam, [:debug_info])}
+      # Extract elixir_v1 AST (macros already expanded!)
+      backend.debug_info(:elixir_v1, module, data, [])
+  end
+end
+#+end_src
+
+*** What We Can Reuse
+- Entire =ElixirScript.Beam= module (copy with minor adjustments)
+- Handles protocols specially
+- Handles String/Agent replacements (we might skip this)
+
+** 2. ESTree JavaScript AST (estree hex package)
+
+*** What It Is
+- Hex package: =estree ~> 2.6=
+- Structs representing JavaScript AST nodes
+- Can generate JavaScript code from AST
+
+*** Example
+#+begin_src elixir
+alias ESTree.Tools.Builder, as: J
+
+# Build JavaScript: export default { greet(name) { return name; } }
+J.export_default(
+  J.object_expression([
+    J.method_definition(
+      J.identifier("greet"),
+      [J.identifier("name")],
+      [J.return_statement(J.identifier("name"))]
+    )
+  ])
+)
+#+end_src
+
+*** What We Can Reuse
+- Use =estree= dependency (already in our mix.exs)
+- Use =ESTree.Tools.Builder= for generating JS AST
+- Use =ESTree.Tools.Generator= to convert AST → JS code
+
+** 3. Pattern Matching (Tailored library)
+
+*** What It Is
+- JavaScript runtime library for pattern matching
+- Called from generated JavaScript code
+- Handles all Elixir pattern matching scenarios
+
+*** Example Translation
+#+begin_src elixir
+# Elixir
+def first([head | tail]), do: head
+
+# Translates to JS (pseudocode):
+Patterns.match([
+  Patterns.headTail(
+    Patterns.variable(),
+    Patterns.variable()
+  )
+], value)
+#+end_src
+
+*** What We Can Reuse
+- Entire Tailored library (it's on npm)
+- Pattern translation logic from =ElixirScript.Translate.Forms.Pattern=
+- =ElixirScript.Translate.Forms.Pattern.Patterns= helper functions
+
+** 4. Translation Passes
+
+*** Module Structure
+#+begin_example
+lib/elixir_script/passes/
+├── translate.ex              # Entry point
+├── translate/
+│   ├── module.ex             # Module translation
+│   ├── function.ex           # Function translation
+│   ├── clause.ex             # Clause handling
+│   ├── form.ex               # Expression dispatcher
+│   └── forms/
+│       ├── pattern.ex        # Pattern matching
+│       ├── match.ex          # Match expressions
+│       ├── map.ex            # Map literals
+│       ├── for.ex            # Comprehensions
+│       ├── bitstring.ex      # Binaries/bitstrings
+│       ├── try.ex            # Try/catch
+│       ├── with.ex           # With expressions
+│       ├── receive.ex        # Receive (we skip)
+│       ├── js.ex             # JS FFI
+│       └── remote.ex         # Remote calls
+#+end_example
+
+*** What We Can Reuse
+- Overall structure (dispatcher pattern in =form.ex=)
+- Pattern matching translation (=forms/pattern.ex=)
+- Map translation logic (=forms/map.ex=)
+- Comprehension logic (=forms/for.ex=)
+- Helpers for identifiers, references
+
+*** What We Skip
+- =receive.ex= - No process support
+- =Agent.ex= replacement - Not needed for browser
+
+** 5. Trampolining (Tail Call Optimization)
+
+*** What It Is
+Elixir supports tail-call recursion. JavaScript doesn't.
+ElixirScript uses "trampolining" technique.
+
+#+begin_src javascript
+// Instead of direct recursion
+function factorial(n, acc) {
+  if (n === 0) return acc;
+  return factorial(n - 1, n * acc); // Stack overflow!
+}
+
+// Use trampolining
+function factorial(n, acc) {
+  if (n === 0) return acc;
+  return () => factorial(n - 1, n * acc); // Return thunk
+}
+
+// Execute with trampoline
+function trampoline(fn) {
+  let result = fn;
+  while (typeof result === 'function') {
+    result = result();
+  }
+  return result;
+}
+#+end_src
+
+*** What We Can Reuse
+- Trampolining logic from =ElixirScript.Translate.Function=
+- Only apply to tail-recursive functions
+
+* What We DON'T Need
+
+1. *FFI/JS Interop* - Not priority for Phase 1
+2. *Agent support* - No OTP in browser
+3. *Unicode String replacements* - Modern browsers handle unicode fine
+4. *Protocols* - Phase 2+ feature
+5. *Tree-shaking* - Nice to have, not critical
+6. *Manifest/incremental compilation* - Phase 2+
+
+* Implementation Strategy
+
+** Phase 1 Minimal Path
+
+1. *BEAM Reader* - Copy =ElixirScript.Beam= almost verbatim
+2. *Core Translator* - Build simplified version:
+   - Module → ES module
+   - Function → JS function
+   - Basic data types (int, float, string, atom)
+   - Simple pattern matching (variable binding only)
+
+3. *ESTree Generation* - Use existing =estree= package
+4. *Output* - Generate ES modules
+
+** Incremental TDD Approach
+
+#+begin_src elixir
+# Test 1: Compile empty module
+defmodule Empty do
+end
+
+# Test 2: Compile function returning literal
+defmodule Simple do
+  def hello, do: "world"
+end
+
+# Test 3: Compile function with args
+defmodule WithArgs do
+  def greet(name), do: "Hello, #{name}!"
+end
+
+# Test 4: Multiple functions
+# Test 5: Pattern matching
+# ...etc
+#+end_src
+
+* Directory Structure for CurupiraScript
+
+#+begin_example
+lib/curupira_script/
+├── compiler.ex           # Entry point (like ElixirScript.Compiler)
+├── beam.ex               # BEAM AST extraction (copy from ElixirScript)
+├── state.ex              # GenServer for compilation state
+└── passes/
+    ├── translate.ex      # Translation orchestration
+    └── translate/
+        ├── module.ex     # Module translation
+        ├── function.ex   # Function translation
+        ├── form.ex       # Expression dispatcher
+        └── forms/
+            ├── pattern.ex  # Pattern matching
+            └── ...         # Other forms as needed
+#+end_example
+
+* Next Steps
+
+1. [✓] Study ElixirScript architecture
+2. [ ] Copy =ElixirScript.Beam= to =CurupiraScript.Beam=
+3. [ ] Create minimal =CurupiraScript.Compiler=
+4. [ ] Implement =CurupiraScript.Translate.Module= for basic modules
+5. [ ] Make first test pass: compile =Simple.hello= to JS
+6. [ ] Iterate with TDD
+
+* References
+
+- ElixirScript source: ~/personal/elixirscript
+- CompilerInternals.md: Excellent architecture overview
+- estree package: https://hex.pm/packages/estree
+- Tailored library: https://github.com/elixirscript/tailored
+- ESTree spec: https://github.com/estree/estree
