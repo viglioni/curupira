@@ -15,7 +15,7 @@ defmodule CurupiraScript.Compiler do
 
   """
 
-  alias CurupiraScript.Beam
+  alias CurupiraScript.{Beam, Translator}
   alias ESTree.Tools.{Builder, Generator}
 
   @doc """
@@ -187,24 +187,45 @@ defmodule CurupiraScript.Compiler do
   defp translate_functions(definitions) do
     Enum.flat_map(definitions, fn
       # Public function
-      {{name, _arity}, :def, _meta, _clauses} ->
-        # For now, create a simple stub function
-        # function_expression(params, defaults, body, generator, expression, async, loc)
-        body =
+      {{name, _arity}, :def, _meta, clauses} ->
+        # For now, only handle single-clause functions
+        # TODO: Handle multi-clause functions with pattern matching
+        [{_clause_meta, params, _guards, body}] = clauses
+
+        # Translate function parameters
+        js_params = translate_params(params)
+
+        # Translate function body
+        js_body_expr = Translator.translate(body)
+
+        # Wrap in block statement with return
+        js_body =
           Builder.block_statement([
-            Builder.return_statement(Builder.literal(nil))
+            Builder.return_statement(js_body_expr)
           ])
 
         [
           Builder.property(
             Builder.identifier(Atom.to_string(name)),
-            Builder.function_expression([], [], body)
+            Builder.function_expression(js_params, [], js_body)
           )
         ]
 
       # Skip private functions, macros, etc for now
       _ ->
         []
+    end)
+  end
+
+  defp translate_params(params) do
+    Enum.map(params, fn
+      {name, _meta, nil} when is_atom(name) ->
+        Builder.identifier(Atom.to_string(name))
+
+      # TODO: Handle pattern matching in parameters
+      other ->
+        IO.warn("Unsupported parameter pattern: #{inspect(other)}")
+        Builder.identifier("_")
     end)
   end
 
