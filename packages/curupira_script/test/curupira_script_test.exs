@@ -2,19 +2,15 @@ defmodule CurupiraScriptTest do
   use ExUnit.Case
   doctest CurupiraScript
 
-  # Test modules for compilation
-  defmodule Simple do
-    def hello, do: "world"
-  end
-
-  defmodule WithArgs do
-    def greet(name), do: "Hello, #{name}!"
-  end
-
-  defmodule Multiple do
-    def add(a, b), do: a + b
-    def subtract(a, b), do: a - b
-  end
+  # Use compiled test fixtures from test/fixtures/
+  # These are compiled by test_helper.exs before tests run
+  alias Fixtures.Simple
+  alias Fixtures.WithArgs
+  alias Fixtures.Multiple
+  alias Fixtures.DataTypes
+  alias Fixtures.PatternMatch
+  alias Fixtures.ControlFlow
+  alias Fixtures.Pipes
 
   describe "version/0" do
     test "returns version string" do
@@ -29,15 +25,18 @@ defmodule CurupiraScriptTest do
 
   describe "compile/2 - basic API" do
     test "accepts a single module" do
-      assert {:error, :not_implemented} = CurupiraScript.compile(Simple)
+      assert {:ok, %{compiled_modules: [Fixtures.Simple]}} = CurupiraScript.compile(Simple)
     end
 
     test "accepts a list of modules" do
-      assert {:error, :not_implemented} = CurupiraScript.compile([Simple, WithArgs])
+      assert {:ok, %{compiled_modules: modules}} = CurupiraScript.compile([Simple, WithArgs])
+      assert Fixtures.Simple in modules
+      assert Fixtures.WithArgs in modules
     end
 
     test "accepts empty options" do
-      assert {:error, :not_implemented} = CurupiraScript.compile(Simple, [])
+      assert {:ok, %{compiled_modules: [Fixtures.Simple]}} =
+               CurupiraScript.compile(Simple, [])
     end
   end
 
@@ -234,16 +233,6 @@ defmodule CurupiraScriptTest do
   end
 
   describe "compile/2 - data types (Phase 1+)" do
-    defmodule DataTypes do
-      def integers, do: 42
-      def floats, do: 3.14
-      def strings, do: "hello"
-      def atoms, do: :ok
-      def lists, do: [1, 2, 3]
-      def tuples, do: {1, 2}
-      def maps, do: %{key: "value"}
-    end
-
     @tag :phase1
     test "compiles integers" do
       assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(DataTypes)
@@ -277,12 +266,6 @@ defmodule CurupiraScriptTest do
   end
 
   describe "compile/2 - pattern matching (Phase 1+)" do
-    defmodule PatternMatch do
-      def first([head | _tail]), do: head
-      def is_empty?([]), do: true
-      def is_empty?(_), do: false
-    end
-
     @tag :phase1
     test "compiles pattern matching functions" do
       assert {:ok, %{output_files: [%{content: js}]}} =
@@ -302,24 +285,6 @@ defmodule CurupiraScriptTest do
   end
 
   describe "compile/2 - control flow (Phase 1+)" do
-    defmodule ControlFlow do
-      def check(x) do
-        if x > 0 do
-          :positive
-        else
-          :negative
-        end
-      end
-
-      def classify(x) do
-        case x do
-          0 -> :zero
-          n when n > 0 -> :positive
-          _ -> :negative
-        end
-      end
-    end
-
     @tag :phase1
     test "compiles if/else" do
       assert {:ok, %{output_files: [%{content: js}]}} =
@@ -346,17 +311,6 @@ defmodule CurupiraScriptTest do
   end
 
   describe "compile/2 - pipe operator (Phase 1+)" do
-    defmodule Pipes do
-      def transform(x) do
-        x
-        |> add_one()
-        |> multiply_two()
-      end
-
-      defp add_one(n), do: n + 1
-      defp multiply_two(n), do: n * 2
-    end
-
     @tag :phase1
     test "compiles pipe operator" do
       assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(Pipes)

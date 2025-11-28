@@ -102,14 +102,15 @@ defmodule CurupiraScript.Translator do
 
   # String interpolation: {:<<>>, meta, parts}
   def translate({:<<>>, _meta, parts}) when is_list(parts) do
-    # Check if it's a simple string or has interpolation
-    case extract_string_parts(parts) do
-      {:simple, binary} ->
-        J.literal(binary)
+    # For now, just handle simple strings and skip template literals
+    # TODO: Properly implement template literals
+    case extract_simple_string(parts) do
+      {:ok, str} ->
+        J.literal(str)
 
-      {:interpolated, segments} ->
-        # Convert to template literal
-        build_template_literal(segments)
+      :error ->
+        # Has interpolation - for now, just return a concatenation
+        build_string_concatenation(parts)
     end
   end
 
@@ -164,53 +165,56 @@ defmodule CurupiraScript.Translator do
 
   # Private helpers
 
-  defp extract_string_parts(parts) do
+  defp extract_simple_string(parts) do
     case Enum.all?(parts, &is_binary/1) do
       true ->
         # Simple string, no interpolation
-        {:simple, IO.iodata_to_binary(parts)}
+        {:ok, IO.iodata_to_binary(parts)}
 
       false ->
         # Has interpolation
-        segments =
-          Enum.map(parts, fn
-            part when is_binary(part) ->
-              {:string, part}
-
-            {:"::", _meta, [expr, {:binary, _meta2, _}]} ->
-              {:expr, expr}
-
-            other ->
-              {:expr, other}
-          end)
-
-        {:interpolated, segments}
+        :error
     end
   end
 
-  defp build_template_literal(segments) do
-    # Build template literal: `Hello ${name}!`
-    {quasis, expressions} =
-      Enum.reduce(segments, {[], []}, fn
-        {:string, str}, {quasis, exprs} ->
-          {quasis ++ [str], exprs}
+  defp build_string_concatenation(parts) do
+    # Build string concatenation using + operator
+    # parts: [{:"::", meta, [content, {:binary, ...}]}, ...]
+    segments =
+      Enum.map(parts, fn
+        {:"::", _, [content, {:binary, _, _}]} ->
+          case content do
+            str when is_binary(str) ->
+              J.literal(str)
 
-        {:expr, expr}, {quasis, exprs} ->
-          # Add empty string if needed to maintain structure
-          {quasis ++ [""], exprs ++ [translate(expr)]}
+            # Call to String.Chars.to_string
+            {{:., _, [String.Chars, :to_string]}, _, [expr]} ->
+              translate(expr)
+
+            other ->
+              translate(other)
+          end
+
+        part when is_binary(part) ->
+          J.literal(part)
+
+        other ->
+          translate(other)
       end)
 
-    # ESTree template literal
-    quasi_elements =
-      quasis
-      |> Enum.with_index()
-      |> Enum.map(fn {str, idx} ->
-        tail = idx == length(quasis) - 1
-        # template_element(raw, cooked_value, tail, loc \\ nil)
-        J.template_element(str, str, tail)
-      end)
+    # Chain with + operators
+    case segments do
+      [] ->
+        J.literal("")
 
-    J.template_literal(quasi_elements, expressions)
+      [single] ->
+        single
+
+      [first | rest] ->
+        Enum.reduce(rest, first, fn segment, acc ->
+          J.binary_expression(:+, acc, segment)
+        end)
+    end
   end
 
   defp elixir_op_to_js(:+), do: :+
