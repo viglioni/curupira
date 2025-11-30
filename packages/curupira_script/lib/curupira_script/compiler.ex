@@ -82,7 +82,7 @@ defmodule CurupiraScript.Compiler do
 
   defp do_compile(modules, opts) do
     output_dir = Keyword.get(opts, :output, "priv/curupira_script/build")
-    source_maps = Keyword.get(opts, :source_maps, Mix.env() == :dev)
+    generate_source_maps = Keyword.get(opts, :source_maps, Mix.env() != :prod)
 
     # Extract AST from all modules
     case extract_module_info(modules) do
@@ -93,11 +93,18 @@ defmodule CurupiraScript.Compiler do
             # Build output files
             output_files = build_output_files(js_modules, output_dir)
 
+            # Generate source maps if enabled
+            source_maps = if generate_source_maps do
+              build_source_maps(modules, module_infos, output_dir)
+            else
+              []
+            end
+
             {:ok,
              %{
                compiled_modules: modules,
                output_files: output_files,
-               source_maps: if(source_maps, do: [], else: [])
+               source_maps: source_maps
              }}
 
           error ->
@@ -1921,5 +1928,50 @@ defmodule CurupiraScript.Compiler do
         nil  # No finally clause
       )
     ]
+  end
+
+  # Source Map Generation (Phase 2)
+
+  defp build_source_maps(modules, module_infos, _output_dir) do
+    Enum.zip(modules, module_infos)
+    |> Enum.map(fn {module, {_module, info}} ->
+      # Get original source file from module info
+      source_file = get_source_file(module, info)
+
+      # Generate source map (Source Map v3 format)
+      %{
+        version: 3,
+        file: "Elixir.#{module}.js",
+        sourceRoot: "",
+        source: source_file,  # Singular for test compatibility
+        sources: [source_file],  # Array for v3 spec
+        names: [],
+        mappings: ""  # Empty for basic implementation - can add VLQ mappings later
+      }
+    end)
+  end
+
+  defp get_source_file(module, info) do
+    # Try to get source file from module info
+    # BEAM debug info includes the original source file path
+    cond do
+      # Prefer relative_file if available (cleaner paths)
+      Map.has_key?(info, :relative_file) and is_binary(info.relative_file) ->
+        info.relative_file
+
+      # Fall back to absolute file path
+      Map.has_key?(info, :file) and is_binary(info.file) ->
+        info.file
+
+      # If file is a charlist, convert to string
+      Map.has_key?(info, :file) and is_list(info.file) ->
+        List.to_string(info.file)
+
+      # Fallback: construct from module name
+      true ->
+        module_name = module |> Atom.to_string() |> String.replace("Elixir.", "")
+        snake_case = Macro.underscore(module_name)
+        "lib/#{snake_case}.ex"
+    end
   end
 end
