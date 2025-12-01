@@ -202,29 +202,29 @@ defmodule CurupiraScript.Compiler do
     # Translate each function
     functions = translate_functions(definitions)
 
+    # Detect which runtime modules are needed (Enum, String, Map, JSON, HTTP)
+    runtime_imports = detect_runtime_imports(definitions)
+
+    # Build runtime imports (Enum, String, Map, JSON, HTTP, HTTPResponse)
+    import_statements = build_runtime_import_statements(runtime_imports)
+
     # Build pattern matching runtime helpers
     helpers = build_pattern_matching_helpers()
 
-    # Add Range class runtime helper
+    # Add Range class (struct type)
     range_class = build_range_class()
 
-    # Add Duration class runtime helper
+    # Add Duration class (struct type)
     duration_class = build_duration_class()
 
-    # Add HTTP class runtime helpers
-    http_response_class = build_http_response_class()
-    http_class = build_http_class()
-
-    # Add JSON class runtime helper (returns list of helper functions + class)
-    json_nodes = build_json_class()
-
-    # Build ES module: json + http classes + duration + range + helpers + struct classes + export default { ...functions }
+    # Build ES module: imports + duration + range + helpers + struct classes + export default { ...functions }
+    # Note: JSON, HTTP, HTTPResponse are now imported from runtime library, not generated
     module_ast =
       Builder.export_default_declaration(
         Builder.object_expression(functions)
       )
 
-    {:ok, Builder.program(json_nodes ++ [http_response_class, http_class, duration_class, range_class] ++ helpers ++ struct_classes ++ [module_ast])}
+    {:ok, Builder.program(import_statements ++ [duration_class, range_class] ++ helpers ++ struct_classes ++ [module_ast])}
   end
 
   defp translate_functions(definitions) do
@@ -1954,16 +1954,16 @@ defmodule CurupiraScript.Compiler do
     # Generate JSON class with static methods for encoding/decoding JSON
     # class JSON {
     #   static encode(data) { return this.encodeInternal(data, false); }
-    #   static encode!(data) { return this.encodeInternal(data, true); }
+    #   static encode_bang(data) { return this.encodeInternal(data, true); }
     #   static decode(json, opts = {}) { return this.decodeInternal(json, opts, false); }
-    #   static decode!(json, opts = {}) { return this.decodeInternal(json, opts, true); }
+    #   static decode_bang(json, opts = {}) { return this.decodeInternal(json, opts, true); }
     #   static encodeInternal(data, shouldThrow) { ... }
     #   static decodeInternal(json, opts, shouldThrow) { ... }
     # }
 
-    # Build encode! method (throws on error)
+    # Build encode_bang method (throws on error)
     encode_bang_method = Builder.method_definition(
-      Builder.identifier("encode!"),
+      Builder.identifier("encode_bang"),
       Builder.function_expression(
         [Builder.identifier("data")],
         [],
@@ -1988,9 +1988,9 @@ defmodule CurupiraScript.Compiler do
       true    # static
     )
 
-    # Build decode! method (throws on error)
+    # Build decode_bang method (throws on error)
     decode_bang_method = Builder.method_definition(
-      Builder.identifier("decode!"),
+      Builder.identifier("decode_bang"),
       Builder.function_expression(
         [Builder.identifier("json"), Builder.identifier("opts")],
         [],
@@ -2551,6 +2551,181 @@ defmodule CurupiraScript.Compiler do
         module_name = module |> Atom.to_string() |> String.replace("Elixir.", "")
         snake_case = Macro.underscore(module_name)
         "lib/#{snake_case}.ex"
+    end
+  end
+
+  # Runtime imports detection and generation
+
+  defp detect_runtime_imports(definitions) do
+    # Walk through all function definitions and detect Enum/String/Map calls
+    # Returns a MapSet of atoms: :enum, :string, :map
+    imports = MapSet.new()
+
+    Enum.reduce(definitions, imports, fn
+      {{_name, _arity}, :def, _meta, clauses}, acc ->
+        Enum.reduce(clauses, acc, fn {_clause_meta, _params, _guards, body}, acc2 ->
+          detect_runtime_calls_in_expr(body, acc2)
+        end)
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp detect_runtime_calls_in_expr(expr, imports) do
+    # Recursively walk the AST and detect Enum/String/Map calls
+    # Only process if imports is actually a MapSet
+    if not is_struct(imports, MapSet) do
+      imports
+    else
+      do_detect_runtime_calls(expr, imports)
+    end
+  end
+
+  defp do_detect_runtime_calls(expr, imports) do
+
+    case expr do
+      # Remote call: Enum.map(...), String.upcase(...), Map.get(...)
+      # Expanded AST form (atoms directly)
+      {{:., _, [Enum, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:enum)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      {{:., _, [String, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:string)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      {{:., _, [Map, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:map)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      # Unexpanded AST form ({:__aliases__, _, [...]})
+      {{:., _, [{:__aliases__, _, [:Enum]}, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:enum)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      {{:., _, [{:__aliases__, _, [:String]}, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:string)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      {{:., _, [{:__aliases__, _, [:Map]}, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:map)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      # JSON module calls (expanded and unexpanded)
+      {{:., _, [JSON, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:json)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      {{:., _, [{:__aliases__, _, [:JSON]}, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:json)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      # HTTP module calls (expanded and unexpanded)
+      {{:., _, [HTTP, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:http)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      {{:., _, [{:__aliases__, _, [:HTTP]}, _fun]}, _, args} when is_list(args) ->
+        imports
+        |> MapSet.put(:http)
+        |> then(fn acc -> safe_reduce(args, acc) end)
+
+      # List - recurse into elements
+      list when is_list(list) ->
+        safe_reduce(list, imports)
+
+      # Tuple - recurse into elements
+      tuple when is_tuple(tuple) ->
+        tuple
+        |> Tuple.to_list()
+        |> safe_reduce(imports)
+
+      # Atom, number, string, etc. - leaf nodes
+      _other ->
+        imports
+    end
+  end
+
+  # Helper to safely reduce, skipping atoms and other non-traversable values
+  defp safe_reduce(list, imports) when is_list(list) and is_struct(imports, MapSet) do
+    Enum.reduce(list, imports, fn elem, acc ->
+      if is_struct(acc, MapSet) do
+        detect_runtime_calls_in_expr(elem, acc)
+      else
+        acc
+      end
+    end)
+  end
+
+  defp safe_reduce(_not_list, imports), do: imports
+
+  defp build_runtime_import_statements(runtime_imports) do
+    # Build import statements for detected runtime modules
+    # import { Enum, ElixirString as String, ElixirMap as Map } from './lib/index.js';
+
+    if MapSet.size(runtime_imports) == 0 do
+      []
+    else
+      specifiers = []
+
+      specifiers =
+        if MapSet.member?(runtime_imports, :enum) do
+          [Builder.import_specifier(Builder.identifier("Enum"), Builder.identifier("Enum")) | specifiers]
+        else
+          specifiers
+        end
+
+      specifiers =
+        if MapSet.member?(runtime_imports, :string) do
+          # Import as String (aliased from ElixirString)
+          [Builder.import_specifier(Builder.identifier("ElixirString"), Builder.identifier("String")) | specifiers]
+        else
+          specifiers
+        end
+
+      specifiers =
+        if MapSet.member?(runtime_imports, :map) do
+          # Import as Map (aliased from ElixirMap)
+          [Builder.import_specifier(Builder.identifier("ElixirMap"), Builder.identifier("Map")) | specifiers]
+        else
+          specifiers
+        end
+
+      specifiers =
+        if MapSet.member?(runtime_imports, :json) do
+          [Builder.import_specifier(Builder.identifier("JSON"), Builder.identifier("JSON")) | specifiers]
+        else
+          specifiers
+        end
+
+      specifiers =
+        if MapSet.member?(runtime_imports, :http) do
+          # HTTP needs both the module and the HTTPResponse struct
+          [
+            Builder.import_specifier(Builder.identifier("HTTPResponse"), Builder.identifier("HTTPResponse")),
+            Builder.import_specifier(Builder.identifier("HTTP"), Builder.identifier("HTTP"))
+            | specifiers
+          ]
+        else
+          specifiers
+        end
+
+      [
+        Builder.import_declaration(
+          Enum.reverse(specifiers),
+          Builder.literal("./lib/index.js")
+        )
+      ]
     end
   end
 end

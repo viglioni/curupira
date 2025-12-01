@@ -345,60 +345,35 @@ defmodule CurupiraScript.Translator do
       {{:__aliases__, _, [:Duration]}, :new!} ->
         translate_duration_new(args)
 
-      # HTTP.get/1 and HTTP.get/2 - translate to await HTTP.get(...)
-      # Handle both compiled (HTTP atom) and uncompiled ({:__aliases__, _, [:HTTP]}) forms
-      {{:__aliases__, _, [:HTTP]}, :get} ->
-        translate_http_call("get", args)
-      {HTTP, :get} ->
-        translate_http_call("get", args)
+      # JSON stdlib calls - translate to JSON.function(...) with ! -> _bang
+      {{:__aliases__, _, [:JSON]}, _} ->
+        translate_stdlib_call("JSON", func, args)
+      {JSON, _} ->
+        translate_stdlib_call("JSON", func, args)
 
-      # HTTP.post/1 and HTTP.post/2 - translate to await HTTP.post(...)
-      {{:__aliases__, _, [:HTTP]}, :post} ->
-        translate_http_call("post", args)
-      {HTTP, :post} ->
-        translate_http_call("post", args)
+      # HTTP stdlib calls - translate to HTTP.function(...)
+      {{:__aliases__, _, [:HTTP]}, _} ->
+        translate_stdlib_call("HTTP", func, args)
+      {HTTP, _} ->
+        translate_stdlib_call("HTTP", func, args)
 
-      # HTTP.put/1 and HTTP.put/2 - translate to await HTTP.put(...)
-      {{:__aliases__, _, [:HTTP]}, :put} ->
-        translate_http_call("put", args)
-      {HTTP, :put} ->
-        translate_http_call("put", args)
+      # Enum stdlib calls - translate to Enum.function(...)
+      {{:__aliases__, _, [:Enum]}, _} ->
+        translate_stdlib_call("Enum", func, args)
+      {Enum, _} ->
+        translate_stdlib_call("Enum", func, args)
 
-      # HTTP.delete/1 and HTTP.delete/2 - translate to await HTTP.delete(...)
-      {{:__aliases__, _, [:HTTP]}, :delete} ->
-        translate_http_call("delete", args)
-      {HTTP, :delete} ->
-        translate_http_call("delete", args)
+      # String stdlib calls - translate to String.function(...)
+      {{:__aliases__, _, [:String]}, _} ->
+        translate_stdlib_call("String", func, args)
+      {String, _} ->
+        translate_stdlib_call("String", func, args)
 
-      # HTTP.request/3 - translate to await HTTP.request(...)
-      {{:__aliases__, _, [:HTTP]}, :request} ->
-        translate_http_call("request", args)
-      {HTTP, :request} ->
-        translate_http_call("request", args)
-
-      # JSON.encode!/1 and JSON.encode!/2 - translate to JSON.encode!(...)
-      {{:__aliases__, _, [:JSON]}, :encode!} ->
-        translate_json_call("encode!", args)
-      {JSON, :encode!} ->
-        translate_json_call("encode!", args)
-
-      # JSON.decode!/1 and JSON.decode!/2 - translate to JSON.decode!(...)
-      {{:__aliases__, _, [:JSON]}, :decode!} ->
-        translate_json_call("decode!", args)
-      {JSON, :decode!} ->
-        translate_json_call("decode!", args)
-
-      # JSON.encode/1 and JSON.encode/2 - translate to JSON.encode(...)
-      {{:__aliases__, _, [:JSON]}, :encode} ->
-        translate_json_call("encode", args)
-      {JSON, :encode} ->
-        translate_json_call("encode", args)
-
-      # JSON.decode/1 and JSON.decode/2 - translate to JSON.decode(...)
-      {{:__aliases__, _, [:JSON]}, :decode} ->
-        translate_json_call("decode", args)
-      {JSON, :decode} ->
-        translate_json_call("decode", args)
+      # Map stdlib calls - translate to Map.function(...)
+      {{:__aliases__, _, [:Map]}, _} ->
+        translate_stdlib_call("Map", func, args)
+      {Map, _} ->
+        translate_stdlib_call("Map", func, args)
 
       # Other remote calls
       _ ->
@@ -636,6 +611,31 @@ defmodule CurupiraScript.Translator do
       # If opts is not a keyword list, try to translate it directly
       _ ->
         translate(opts)
+    end
+  end
+
+  defp translate_stdlib_call(module_name, func, args) do
+    # Stdlib calls (Enum, String, Map, JSON, HTTP) - translate to module.function(...)
+    # These are imported from the runtime library
+    # Convert ! to _bang for JavaScript compatibility (encode! -> encode_bang)
+    func_name =
+      func
+      |> Atom.to_string()
+      |> String.replace("!", "_bang")
+
+    call_expr = J.call_expression(
+      J.member_expression(
+        J.identifier(module_name),
+        J.identifier(func_name)
+      ),
+      Enum.map(args, &translate/1)
+    )
+
+    # HTTP calls are async and need await
+    if module_name == "HTTP" do
+      J.await_expression(call_expr)
+    else
+      call_expr
     end
   end
 
