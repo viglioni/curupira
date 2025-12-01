@@ -29,11 +29,11 @@ defmodule Mix.Tasks.Compile.CurupiraJs do
 
   @impl Mix.Task.Compiler
   def clean do
-    Mix.Compilers.CurupiraJS.clean()
+    Mix.Compilers.CurupiraJs.clean()
   end
 
   @impl Mix.Task.Compiler
   def manifests do
-    Mix.Compilers.CurupiraJS.manifests()
+    Mix.Compilers.CurupiraJs.manifests()
   end
 end

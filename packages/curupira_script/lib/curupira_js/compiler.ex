@@ -193,9 +193,13 @@ defmodule CurupiraJS.Compiler do
     results =
       Enum.map(module_infos, fn {module, info} ->
         case translate_module(module, info) do
-          {:ok, js_ast} ->
+          {:ok, js_ast, inline_replacements} ->
             # Convert AST to JavaScript code
             js_code = Generator.generate(js_ast)
+
+            # Apply inline JS replacements for FFI functions
+            js_code = apply_inline_replacements(js_code, inline_replacements)
+
             {:ok, {module, js_code}}
 
           error ->
@@ -217,7 +221,22 @@ defmodule CurupiraJS.Compiler do
     end
   end
 
+  defp apply_inline_replacements(js_code, replacements) do
+    Enum.reduce(replacements, js_code, fn {placeholder, replacement}, acc ->
+      String.replace(acc, placeholder, replacement)
+    end)
+  end
+
   defp translate_module(module, info) do
+    # Check if this is an FFI module
+    if CurupiraJS.FFI.ffi_module?(module) do
+      translate_ffi_module(module, info)
+    else
+      translate_regular_module(module, info)
+    end
+  end
+
+  defp translate_regular_module(module, info) do
     # For now, generate a simple ES module
     # TODO: Implement full translation in translate/* modules
 
@@ -252,7 +271,33 @@ defmodule CurupiraJS.Compiler do
         Builder.object_expression(functions)
       )
 
-    {:ok, Builder.program(import_statements ++ [duration_class, range_class] ++ helpers ++ struct_classes ++ [module_ast])}
+    # Regular modules have no inline replacements
+    {:ok, Builder.program(import_statements ++ [duration_class, range_class] ++ helpers ++ struct_classes ++ [module_ast]), []}
+  end
+
+  defp translate_ffi_module(module, _info) do
+    # Get FFI function definitions
+    {:ok, ffi_functions} = CurupiraJS.FFI.get_ffi_functions(module)
+
+    # Generate JavaScript functions for each FFI declaration
+    # Returns {functions, replacements}
+    {functions, all_replacements} =
+      ffi_functions
+      |> Enum.map(fn {name, opts} ->
+        generate_ffi_function(name, opts)
+      end)
+      |> Enum.unzip()
+
+    # Flatten replacements list
+    replacements = List.flatten(all_replacements)
+
+    # Build ES module: export default { ...functions }
+    module_ast =
+      Builder.export_default_declaration(
+        Builder.object_expression(functions)
+      )
+
+    {:ok, Builder.program([module_ast]), replacements}
   end
 
   defp translate_functions(definitions) do
@@ -1722,6 +1767,280 @@ defmodule CurupiraJS.Compiler do
           Builder.literal("./lib/index.js")
         )
       ]
+    end
+  end
+
+  # FFI function generation
+
+  defp generate_ffi_function(name, opts) do
+    # Get function parameters
+    args = Keyword.get(opts, :args, [])
+    arg_names = for i <- 0..(length(args) - 1), do: "arg#{i}"
+    js_params = Enum.map(arg_names, &Builder.identifier/1)
+
+    # Get the JavaScript implementation
+    {js_impl, replacements} = get_ffi_js_implementation(opts, arg_names)
+
+    # Get return type
+    returns = Keyword.get(opts, :returns, :any)
+
+    # Wrap implementation with return type transformation
+    wrapped_impl = wrap_ffi_return(js_impl, returns)
+
+    # Check if async
+    is_async = Keyword.get(opts, :async, detect_async(opts))
+
+    # Build function expression
+    func_expr = Builder.function_expression(
+      js_params,
+      [],
+      Builder.block_statement([
+        Builder.return_statement(wrapped_impl)
+      ]),
+      false,  # not generator
+      false,  # not expression (handled by return)
+      is_async
+    )
+
+    # Build property
+    property = Builder.property(
+      Builder.identifier(Atom.to_string(name)),
+      func_expr
+    )
+
+    {property, replacements}
+  end
+
+  defp get_ffi_js_implementation(opts, arg_names) do
+    cond do
+      # Inline JavaScript
+      Keyword.has_key?(opts, :js) ->
+        js_code = Keyword.get(opts, :js)
+
+        # Generate a unique placeholder identifier
+        placeholder_id = "__FFI_INLINE_#{:erlang.unique_integer([:positive])}__"
+
+        # Use placeholder in AST
+        placeholder_expr = Builder.identifier(placeholder_id)
+
+        # Build call expression: __FFI_INLINE_123__(arg0, arg1, ...)
+        call_expr = Builder.call_expression(
+          placeholder_expr,
+          Enum.map(arg_names, &Builder.identifier/1)
+        )
+
+        # Return the call expression and the replacement mapping
+        # We'll replace the placeholder with the inline JS wrapped in parens
+        replacement = {placeholder_id, "(#{String.trim(js_code)})"}
+
+        {call_expr, [replacement]}
+
+      # External JavaScript path
+      Keyword.has_key?(opts, :js_path) ->
+        js_path = Keyword.get(opts, :js_path)
+        # Parse path like "Math.random" or "document.getElementById"
+        path_parts = String.split(js_path, ".")
+
+        # Build member expression chain
+        base = Builder.identifier(hd(path_parts))
+        member_expr = Enum.reduce(tl(path_parts), base, fn part, acc ->
+          Builder.member_expression(acc, Builder.identifier(part), false)
+        end)
+
+        # Call the function
+        call_expr = Builder.call_expression(
+          member_expr,
+          Enum.map(arg_names, &Builder.identifier/1)
+        )
+
+        {call_expr, []}
+
+      true ->
+        raise "FFI function must have :js or :js_path option"
+    end
+  end
+
+  defp wrap_ffi_return(js_impl, return_type) do
+    case return_type do
+      # :ok - just return :ok atom
+      :ok ->
+        Builder.literal(:ok)
+
+      # any() - return as-is
+      :any ->
+        js_impl
+
+      # {:ok, _type} - wrap in {:ok, value} tuple
+      {:ok, _inner_type} ->
+        # Return [Symbol.for("ok"), result]
+        Builder.array_expression([
+          Builder.call_expression(
+            Builder.member_expression(
+              Builder.identifier("Symbol"),
+              Builder.identifier("for"),
+              false
+            ),
+            [Builder.literal("ok")]
+          ),
+          js_impl
+        ])
+
+      # {:error, _type} - wrap in {:error, value} tuple
+      {:error, _inner_type} ->
+        Builder.array_expression([
+          Builder.call_expression(
+            Builder.member_expression(
+              Builder.identifier("Symbol"),
+              Builder.identifier("for"),
+              false
+            ),
+            [Builder.literal("error")]
+          ),
+          js_impl
+        ])
+
+      # {:result, _type} - check JS object shape for {ok: true/false}
+      {:result, _inner_type} ->
+        # Generate IIFE: (() => { const _r = result; if (_r.ok) return [ok, _r.data]; else return [error, _r.error]; })()
+        Builder.call_expression(
+          Builder.arrow_function_expression(
+            [],  # no params
+            [],  # no defaults
+            Builder.block_statement([
+              # const _result = (js_impl)
+              Builder.variable_declaration(
+                [Builder.variable_declarator(Builder.identifier("_result"), js_impl)],
+                :const
+              ),
+              # if (_result.ok) return [ok, _result.data]; else return [error, _result.error];
+              Builder.if_statement(
+                Builder.member_expression(
+                  Builder.identifier("_result"),
+                  Builder.identifier("ok"),
+                  false
+                ),
+                # then: return [Symbol.for("ok"), _result.data]
+                Builder.return_statement(
+                  Builder.array_expression([
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("Symbol"),
+                        Builder.identifier("for"),
+                        false
+                      ),
+                      [Builder.literal("ok")]
+                    ),
+                    Builder.member_expression(
+                      Builder.identifier("_result"),
+                      Builder.identifier("data"),
+                      false
+                    )
+                  ])
+                ),
+                # else: return [Symbol.for("error"), _result.error]
+                Builder.return_statement(
+                  Builder.array_expression([
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("Symbol"),
+                        Builder.identifier("for"),
+                        false
+                      ),
+                      [Builder.literal("error")]
+                    ),
+                    Builder.member_expression(
+                      Builder.identifier("_result"),
+                      Builder.identifier("error"),
+                      false
+                    )
+                  ])
+                )
+              )
+            ]),
+            false,  # not generator
+            false,  # not expression
+            false   # not async
+          ),
+          []  # no arguments - it's an IIFE
+        )
+
+      # {:option, _type} - check for null/undefined
+      {:option, _inner_type} ->
+        # Generate IIFE: (() => { const _r = result; if (_r != null) return [ok, _r]; else return [error, not_found]; })()
+        Builder.call_expression(
+          Builder.arrow_function_expression(
+            [],  # no params
+            [],  # no defaults
+            Builder.block_statement([
+              # const _result = (js_impl)
+              Builder.variable_declaration(
+                [Builder.variable_declarator(Builder.identifier("_result"), js_impl)],
+                :const
+              ),
+              # if (_result != null) return [ok, _result]; else return [error, not_found];
+              Builder.if_statement(
+                Builder.binary_expression(
+                  :"!=",
+                  Builder.identifier("_result"),
+                  Builder.literal(nil)
+                ),
+                # then: return [Symbol.for("ok"), _result]
+                Builder.return_statement(
+                  Builder.array_expression([
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("Symbol"),
+                        Builder.identifier("for"),
+                        false
+                      ),
+                      [Builder.literal("ok")]
+                    ),
+                    Builder.identifier("_result")
+                  ])
+                ),
+                # else: return [Symbol.for("error"), Symbol.for("not_found")]
+                Builder.return_statement(
+                  Builder.array_expression([
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("Symbol"),
+                        Builder.identifier("for"),
+                        false
+                      ),
+                      [Builder.literal("error")]
+                    ),
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("Symbol"),
+                        Builder.identifier("for"),
+                        false
+                      ),
+                      [Builder.literal("not_found")]
+                    )
+                  ])
+                )
+              )
+            ]),
+            false,  # not generator
+            false,  # not expression
+            false   # not async
+          ),
+          []  # no arguments - it's an IIFE
+        )
+
+      # Other types - return as-is for now
+      _ ->
+        js_impl
+    end
+  end
+
+  defp detect_async(opts) do
+    # Auto-detect if the inline JS contains "async" keyword
+    if Keyword.has_key?(opts, :js) do
+      js_code = Keyword.get(opts, :js)
+      String.contains?(js_code, "async ")
+    else
+      false
     end
   end
 end
