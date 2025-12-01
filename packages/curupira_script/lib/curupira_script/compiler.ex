@@ -41,6 +41,10 @@ defmodule CurupiraScript.Compiler do
   @spec compile(module() | [module()], keyword()) :: {:ok, map()} | {:error, term()}
   def compile(modules, opts \\ [])
 
+  def compile(nil, _opts) do
+    {:error, Error.validation_error({:invalid_input, nil})}
+  end
+
   def compile(module, opts) when is_atom(module) do
     compile([module], opts)
   end
@@ -56,6 +60,10 @@ defmodule CurupiraScript.Compiler do
     end
   end
 
+  def compile(input, _opts) do
+    {:error, Error.validation_error({:invalid_input, input})}
+  end
+
   # Private functions
 
   defp validate_input([], _opts) do
@@ -66,18 +74,38 @@ defmodule CurupiraScript.Compiler do
     # Check all items are atoms
     case Enum.find(modules, fn x -> not is_atom(x) end) do
       nil ->
-        validate_options(opts)
+        # Check all atoms are valid modules (can be loaded)
+        case Enum.find(modules, fn mod -> not is_valid_module?(mod) end) do
+          nil ->
+            validate_options(opts)
+
+          invalid ->
+            {:error, Error.validation_error({:invalid_module, invalid})}
+        end
 
       invalid ->
         {:error, Error.validation_error({:invalid_module, invalid})}
     end
   end
 
+  defp is_valid_module?(module) when is_atom(module) do
+    # Try to ensure the module is loaded
+    # Returns false if the module doesn't exist
+    Code.ensure_loaded?(module)
+  end
+
   defp validate_options(opts) do
-    # For now, accept any options - we'll validate specific ones as we implement them
-    # TODO: Phase 0 - implement full option validation
-    _ = opts
-    :ok
+    # Valid options
+    valid_keys = [:output, :source_maps, :format]
+
+    # Check for invalid options
+    case Enum.find(opts, fn {key, _value} -> key not in valid_keys end) do
+      nil ->
+        :ok
+
+      {invalid_key, _} ->
+        {:error, Error.validation_error({:invalid_option, invalid_key})}
+    end
   end
 
   defp do_compile(modules, opts) do
