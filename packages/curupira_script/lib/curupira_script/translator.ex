@@ -139,24 +139,6 @@ defmodule CurupiraScript.Translator do
     end
   end
 
-  # Maps (extracted to helper)
-  defp translate_map(pairs) do
-    properties =
-      Enum.map(pairs, fn {key, value} ->
-        # For now, convert atom keys to strings
-        key_js =
-          cond do
-            is_atom(key) -> J.literal(Atom.to_string(key))
-            is_binary(key) -> J.literal(key)
-            true -> translate(key)
-          end
-
-        J.property(key_js, translate(value))
-      end)
-
-    J.object_expression(properties)
-  end
-
   # String interpolation: {:<<>>, meta, parts}
   def translate({:<<>>, _meta, parts}) when is_list(parts) do
     # For now, just handle simple strings and skip template literals
@@ -400,6 +382,23 @@ defmodule CurupiraScript.Translator do
 
   # Private helpers
 
+  defp translate_map(pairs) do
+    properties =
+      Enum.map(pairs, fn {key, value} ->
+        # For now, convert atom keys to strings
+        key_js =
+          cond do
+            is_atom(key) -> J.literal(Atom.to_string(key))
+            is_binary(key) -> J.literal(key)
+            true -> translate(key)
+          end
+
+        J.property(key_js, translate(value))
+      end)
+
+    J.object_expression(properties)
+  end
+
   defp translate_duration_new(args) do
     # Duration.new!(keyword_list) -> new Duration({...})
     # Args is a list containing a keyword list
@@ -433,184 +432,6 @@ defmodule CurupiraScript.Translator do
           J.identifier("Duration"),
           [J.object_expression([])]
         )
-    end
-  end
-
-  defp translate_http_call(method_name, args) do
-    # HTTP.method(url) -> await HTTP.method(url)
-    # HTTP.method(url, opts) -> await HTTP.method(url, { headers: ..., body: ... })
-    # HTTP.request(method, url, opts) -> await HTTP.request(method, url, { headers: ..., body: ... })
-
-    case args do
-      # Single argument: HTTP.get(url)
-      [url] ->
-        J.await_expression(
-          J.call_expression(
-            J.member_expression(
-              J.identifier("HTTP"),
-              J.identifier(method_name)
-            ),
-            [translate(url)]
-          )
-        )
-
-      # Two arguments for HTTP.get/post/put/delete: HTTP.get(url, opts)
-      [url, opts] when method_name != "request" ->
-        # Translate options keyword list to JavaScript object
-        opts_js = translate_http_options(opts)
-
-        J.await_expression(
-          J.call_expression(
-            J.member_expression(
-              J.identifier("HTTP"),
-              J.identifier(method_name)
-            ),
-            [translate(url), opts_js]
-          )
-        )
-
-      # Three arguments for HTTP.request: HTTP.request(method, url, opts)
-      [method, url, opts] when method_name == "request" ->
-        opts_js = translate_http_options(opts)
-
-        J.await_expression(
-          J.call_expression(
-            J.member_expression(
-              J.identifier("HTTP"),
-              J.identifier(method_name)
-            ),
-            [translate(method), translate(url), opts_js]
-          )
-        )
-
-      # Fallback
-      _ ->
-        IO.warn("Unexpected HTTP.#{method_name} arguments: #{inspect(args)}")
-        J.literal(nil)
-    end
-  end
-
-  defp translate_http_options(opts) do
-    # Convert Elixir keyword list to JavaScript object
-    # [headers: [...], body: "..."] -> { headers: {...}, body: "..." }
-
-    case opts do
-      # Keyword list
-      opts when is_list(opts) ->
-        properties = Enum.map(opts, fn {key, value} ->
-          case key do
-            :headers ->
-              # Convert header list to object
-              # [{"Content-Type", "application/json"}] -> { "Content-Type": "application/json" }
-              headers_obj = translate_headers(value)
-              J.property(J.identifier("headers"), headers_obj)
-
-            :body ->
-              # Body is already a string (usually from Jason.encode!)
-              J.property(J.identifier("body"), translate(value))
-
-            _ ->
-              # Other options
-              J.property(J.identifier(Atom.to_string(key)), translate(value))
-          end
-        end)
-
-        J.object_expression(properties)
-
-      # If opts is not a keyword list, try to translate it directly
-      _ ->
-        translate(opts)
-    end
-  end
-
-  defp translate_headers(headers) do
-    # Convert header list to JavaScript object
-    # [{"Content-Type", "application/json"}, {"Authorization", "Bearer ..."}]
-    # -> { "Content-Type": "application/json", "Authorization": "Bearer ..." }
-
-    case headers do
-      headers when is_list(headers) ->
-        properties = Enum.map(headers, fn
-          {key, value} when is_binary(key) ->
-            J.property(J.literal(key), translate(value))
-
-          {key, value} ->
-            J.property(translate(key), translate(value))
-
-          _ ->
-            # Skip invalid header format
-            nil
-        end)
-        |> Enum.reject(&is_nil/1)
-
-        J.object_expression(properties)
-
-      # If headers is not a list, translate it directly
-      _ ->
-        translate(headers)
-    end
-  end
-
-  defp translate_json_call(method_name, args) do
-    # JSON.encode!(data) -> JSON.encode!(data)
-    # JSON.decode!(json) -> JSON.decode!(json)
-    # JSON.decode!(json, opts) -> JSON.decode!(json, { keys: :atoms })
-
-    case args do
-      # Single argument: JSON.encode!(data) or JSON.decode!(json)
-      [arg] ->
-        J.call_expression(
-          J.member_expression(
-            J.identifier("JSON"),
-            J.identifier(method_name)
-          ),
-          [translate(arg)]
-        )
-
-      # Two arguments for decode with options: JSON.decode!(json, opts)
-      [json, opts] when method_name in ["decode!", "decode"] ->
-        # Translate options keyword list to JavaScript object
-        opts_js = translate_json_options(opts)
-
-        J.call_expression(
-          J.member_expression(
-            J.identifier("JSON"),
-            J.identifier(method_name)
-          ),
-          [translate(json), opts_js]
-        )
-
-      # Fallback
-      _ ->
-        IO.warn("Unexpected JSON.#{method_name} arguments: #{inspect(args)}")
-        J.literal(nil)
-    end
-  end
-
-  defp translate_json_options(opts) do
-    # Convert Elixir keyword list to JavaScript object
-    # [keys: :atoms] -> { keys: Symbol.for('atoms') }
-
-    case opts do
-      # Keyword list
-      opts when is_list(opts) ->
-        properties = Enum.map(opts, fn {key, value} ->
-          case key do
-            :keys ->
-              # Convert :atoms to Symbol.for('atoms')
-              J.property(J.identifier("keys"), translate(value))
-
-            _ ->
-              # Other options
-              J.property(J.identifier(Atom.to_string(key)), translate(value))
-          end
-        end)
-
-        J.object_expression(properties)
-
-      # If opts is not a keyword list, try to translate it directly
-      _ ->
-        translate(opts)
     end
   end
 

@@ -11,8 +11,6 @@ defmodule CurupiraScriptTest do
   alias Fixtures.PatternMatch
   alias Fixtures.ControlFlow
   alias Fixtures.Pipes
-  alias Fixtures.Structs
-  alias Fixtures.TypedStructs
   alias Fixtures.ModernElixir
   alias Fixtures.HTTP
 
@@ -611,8 +609,8 @@ defmodule CurupiraScriptTest do
       assert {:ok, %{output_files: [%{content: js}]}} =
         CurupiraScript.compile(HTTP)
 
-      # Should generate HTTP class
-      assert js =~ "class HTTP"
+      # Should import HTTP from runtime library
+      assert js =~ "import { HTTP, HTTPResponse } from './lib/index.js';"
     end
 
     @tag :http
@@ -674,8 +672,8 @@ defmodule CurupiraScriptTest do
       assert {:ok, %{output_files: [%{content: js}]}} =
         CurupiraScript.compile(HTTP)
 
-      # Should create HTTPResponse class
-      assert js =~ "class HTTPResponse"
+      # Should import HTTPResponse from runtime library
+      assert js =~ "import { HTTP, HTTPResponse } from './lib/index.js';"
     end
 
     @tag :http
