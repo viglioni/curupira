@@ -10,9 +10,11 @@ Modern fork of [[https://github.com/elixirscript/elixirscript][ElixirScript]] su
 
 ** Status
 
-🚧 *Under Development* - Phase 0: Architecture Study
+✅ *Core Implementation Complete* - Phases 1-3 Done
 
-Currently studying ElixirScript architecture to build fresh implementation.
+Fully functional Elixir to JavaScript transpiler with modern Elixir support.
+
+*Test Coverage:* 97 tests passing, 1 skipped (format option)
 
 ** What is CurupiraScript?
 
@@ -75,20 +77,32 @@ Generated files will be in =assets/js/Elixir.MyApp.js=
 
 *** Supported ✅
 
+*Core Language Features:*
 - Basic data types (integers, floats, strings, atoms, lists, maps, tuples)
-- *Structs* (CRITICAL for DOM APIs)
+- *Structs* (including TypedStruct support)
 - Functions with pattern matching and guards
 - Pipe operator
-- Comprehensions
 - Control flow (if, case, cond, with)
+
+*Modern Elixir (1.12-1.18):*
+- Stepped ranges (=1..10//2=)
+- =then/2= and =tap/2= pipeline helpers
+- =is_non_struct_map/1= guard
+- Duration type (all time units)
+
+*Standard Library (Runtime):*
+- JSON module (encode/decode with options)
+- HTTP client (fetch-based, async/await)
+- Enum functions (50+ functions)
+- String functions (40+ functions with Unicode support)
+- Map functions (30+ functions)
 
 *** Planned 🚧
 
-- Stepped ranges (=1..10//2=)
-- =then/2= and =tap/2=
-- Duration type
-- JSON module
-- Expanded stdlib
+- Additional stdlib functions
+- Process/GenServer simulation (optional)
+- Module attributes
+- File I/O adapters
 
 *** Not Supported ❌
 
@@ -122,25 +136,21 @@ mix format
 
 *** Test-Driven Development
 
-This project uses TDD with tests organized by implementation phase:
+This project uses comprehensive test coverage:
 
 #+begin_src shell
-# Run all tests (shows Phase 1 failures for guidance)
+# Run all tests
 mix test
-
-# Run only current phase tests (all should pass ✅)
-mix test --exclude phase1
-
-# Run Phase 1 tests only (guides implementation)
-mix test --only phase1
 
 # Generate coverage report
 mix coveralls.html
 #+end_src
 
 *Test Status:*
-- Phase 0: 5 passing, 9 skipped (options validation)
-- Phase 1: 28 tests ready (guide implementation)
+- ✅ 97 tests passing
+- ✅ 1 skipped (format option - not implemented)
+- ✅ 0 failures
+- ✅ All phases complete (Phase 1: Core, Phase 2: Modern Elixir, Phase 3: Stdlib)
 
 See [[file:test/README.org][test/README.org]] for detailed test organization.
 
@@ -164,27 +174,45 @@ curupira_script/
 
 ** Roadmap
 
-*** Phase 0: Architecture Study (Current)
+*** Phase 0: Architecture Study ✅
 
-- [ ] Clone ElixirScript as reference
-- [ ] Document BEAM AST extraction
-- [ ] Document translation pipeline
-- [ ] Document pattern matching
-- [ ] Plan implementation
+- [X] Clone ElixirScript as reference
+- [X] Document BEAM AST extraction
+- [X] Document translation pipeline
+- [X] Document pattern matching
+- [X] Plan implementation
 
-*** Phase 1: Greenfield Build
+*** Phase 1: Greenfield Build ✅
 
-- [ ] Core compiler pipeline
-- [ ] Pattern matching (using Tailored)
-- [ ] Basic runtime
-- [ ] Struct support
+- [X] Core compiler pipeline
+- [X] Pattern matching with multi-clause functions
+- [X] Basic runtime
+- [X] Struct support (including TypedStruct)
 
-*** Phase 2: Modern Elixir
+*** Phase 2: Modern Elixir ✅
 
-- [ ] Stepped ranges
-- [ ] then/tap
-- [ ] Duration type
-- [ ] JSON module
+- [X] Stepped ranges (1..10//2)
+- [X] then/tap pipeline helpers
+- [X] is_non_struct_map/1 guard
+- [X] Duration type (all time units)
+- [X] Source maps
+
+*** Phase 3: Stdlib Expansion ✅
+
+- [X] JSON module (encode/decode)
+- [X] HTTP client (async/await, fetch-based)
+- [X] Enum runtime library (50+ functions)
+- [X] String runtime library (40+ functions, Unicode)
+- [X] Map runtime library (30+ functions)
+- [X] Automatic import detection
+
+*** Phase 4: Polish & Optimization (Next)
+
+- [ ] Template literals for string interpolation
+- [ ] Additional Enum/String/Map functions
+- [ ] Performance optimizations
+- [ ] Extended error messages
+- [ ] Module attributes support
 
 See [[file:../../.llm/todo.org][todo.org]] for detailed tasks.
 
@@ -210,6 +238,6 @@ Part of the [[file:../../readme.org][Curupira project]].
 
 ---
 
-*Status:* 🚧 Under Active Development
+*Status:* ✅ Core Implementation Complete (Phases 1-3)
 *Version:* 0.33.0-dev
-*Last Updated:* 2025-11-27
+*Last Updated:* 2025-12-01

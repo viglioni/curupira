@@ -137,8 +137,7 @@ defmodule CurupiraScriptTest do
 
     test "handles string interpolation" do
       assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(WithArgs)
-      # Currently using string concatenation with +
-      # TODO: Switch to template literals in Phase 2
+      # Uses string concatenation with +
       assert js =~ "+"
       assert js =~ "name"
     end
