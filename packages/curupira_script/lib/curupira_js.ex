@@ -1,6 +1,6 @@
-defmodule CurupiraScript do
+defmodule CurupiraJS do
   @moduledoc """
-  CurupiraScript - Elixir to JavaScript transpiler.
+  CurupiraJS - Elixir to JavaScript transpiler.
 
   Compiles Elixir code to modern JavaScript (ES2020+) for client-side web applications.
 
@@ -10,8 +10,8 @@ defmodule CurupiraScript do
 
       def project do
         [
-          compilers: Mix.compilers() ++ [:curupira_script],
-          curupira_script: [
+          compilers: Mix.compilers() ++ [:curupira_js],
+          curupira_js: [
             input: MyApp,
             output: "assets/js"
           ]
@@ -27,7 +27,7 @@ defmodule CurupiraScript do
   Available options:
 
     * `:input` (required) - Entry module or list of modules to compile
-    * `:output` (optional) - Output directory. Defaults to `priv/curupira_script/build`
+    * `:output` (optional) - Output directory. Defaults to `priv/curupira_js/build`
     * `:source_maps` (optional) - Generate source maps. Defaults to `true` in dev
     * `:format` (optional) - Output format (only `:es` supported). Defaults to `:es`
 
@@ -66,26 +66,26 @@ defmodule CurupiraScript do
   ## Examples
 
       # Compile single module
-      CurupiraScript.compile(MyApp)
+      CurupiraJS.compile(MyApp)
 
       # Compile multiple modules
-      CurupiraScript.compile([MyApp, MyApp.Utils])
+      CurupiraJS.compile([MyApp, MyApp.Utils])
 
       # With options
-      CurupiraScript.compile(MyApp, output: "dist/js", source_maps: true)
+      CurupiraJS.compile(MyApp, output: "dist/js", source_maps: true)
 
   """
   @spec compile(module() | [module()], keyword()) :: {:ok, map()} | {:error, term()}
   def compile(modules, opts \\ []) do
-    CurupiraScript.Compiler.compile(modules, opts)
+    CurupiraJS.Compiler.compile(modules, opts)
   end
 
   @doc """
-  Get the version of CurupiraScript.
+  Get the version of CurupiraJS.
   """
   @spec version() :: String.t()
   def version do
-    case Application.spec(:curupira_script, :vsn) do
+    case Application.spec(:curupira_js, :vsn) do
       vsn when is_list(vsn) -> List.to_string(vsn)
       _ -> "0.33.0-dev"
     end

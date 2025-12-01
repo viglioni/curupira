@@ -1,4 +1,4 @@
-#+title: CurupiraScript Changelog
+#+title: CurupiraJS Changelog
 #+date: 2025-11-27
 
 All notable changes to this project will be documented in this file.
@@ -10,7 +10,7 @@ and this project adheres to [[https://semver.org/spec/v2.0.0.html][Semantic Vers
 
 ** Added
 - Initial project structure
-- Basic =CurupiraScript= module with =compile/2= and =version/0=
+- Basic =CurupiraJS= module with =compile/2= and =version/0=
 - Mix project configuration
 - Test suite setup
 - Documentation structure
@@ -59,8 +59,8 @@ We use semantic versioning:
 1. Update version in =mix.exs=
 2. Update this changelog
 3. Commit: =git commit -m "chore: release v0.33.0"=
-4. Tag: =git tag curupira_script-v0.33.0=
-5. Push: =git push origin curupira_script-v0.33.0=
+4. Tag: =git tag curupira_js-v0.33.0=
+5. Push: =git push origin curupira_js-v0.33.0=
 6. Publish: =mix hex.publish=
 
 ---

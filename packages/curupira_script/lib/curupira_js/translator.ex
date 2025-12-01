@@ -1,4 +1,4 @@
-defmodule CurupiraScript.Translator do
+defmodule CurupiraJS.Translator do
   @moduledoc """
   Translates Elixir AST expressions to ESTree JavaScript AST.
   """
@@ -376,7 +376,7 @@ defmodule CurupiraScript.Translator do
   def translate(expr) do
     # For now, return null and warn for anything we don't support yet
     # In the future, this should propagate errors up to the compiler
-    IO.warn(CurupiraScript.Error.format(CurupiraScript.Error.translation_error(expr)))
+    IO.warn(CurupiraJS.Error.format(CurupiraJS.Error.translation_error(expr)))
     J.literal(nil)
   end
 

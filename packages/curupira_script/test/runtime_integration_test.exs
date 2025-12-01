@@ -1,9 +1,9 @@
-defmodule CurupiraScriptRuntimeIntegrationTest do
+defmodule CurupiraJSRuntimeIntegrationTest do
   use ExUnit.Case
 
   @moduletag :runtime_integration
 
-  alias CurupiraScript.{Compiler, Bundler, DependencyWalker}
+  alias CurupiraJS.{Compiler, Bundler, DependencyWalker}
 
   @test_output_dir "test/tmp/runtime"
 

@@ -1,6 +1,6 @@
-defmodule CurupiraScript.Error do
+defmodule CurupiraJS.Error do
   @moduledoc """
-  Error handling and formatting for CurupiraScript.
+  Error handling and formatting for CurupiraJS.
 
   Provides rich, helpful error messages with:
   - Source context
@@ -189,7 +189,7 @@ defmodule CurupiraScript.Error do
   end
 
   defp suggest_hint(:validation_error, :empty_module_list) do
-    "Pass at least one module to compile, e.g., CurupiraScript.compile(MyModule)"
+    "Pass at least one module to compile, e.g., CurupiraJS.compile(MyModule)"
   end
 
   defp suggest_hint(:translation_error, {:fn, _, _}) do

@@ -1,4 +1,4 @@
-defmodule CurupiraScript.Bundler do
+defmodule CurupiraJS.Bundler do
   @moduledoc """
   Bundles multiple compiled modules into a single JavaScript file.
 

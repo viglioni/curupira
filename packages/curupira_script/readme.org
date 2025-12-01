@@ -1,8 +1,8 @@
-#+title: CurupiraScript
+#+title: CurupiraJS
 #+author: Curupira Team
 #+date: 2025-12-01
 
-* CurupiraScript
+* CurupiraJS
 
 Elixir to JavaScript transpiler for client-side applications.
 
@@ -17,7 +17,7 @@ Modern fork of [[https://github.com/elixirscript/elixirscript][ElixirScript]] su
 - JavaScript bundler with dependency walking
 - Verified working in Node.js 18+
 
-** What is CurupiraScript?
+** What is CurupiraJS?
 
 Compiles Elixir code to JavaScript, allowing you to write client-side web applications in Elixir.
 
@@ -48,7 +48,7 @@ Add to your =mix.exs=:
 #+begin_src elixir
 def deps do
   [
-    {:curupira_script, "~> 0.33"}
+    {:curupira_js, "~> 0.33"}
   ]
 end
 #+end_src
@@ -63,7 +63,7 @@ def project do
     app: :my_app,
     # ...other config...
 
-    # CurupiraScript configuration
+    # CurupiraJS configuration
     curupira_js: [
       input: [MyApp.Site, MyApp.Helper],  # Entry modules
       output: "js/elixir_bundle.js"       # Output path (default)
@@ -77,7 +77,7 @@ end
 *** Build JavaScript bundle
 
 #+begin_src shell
-$ mix curupira_script.build
+$ mix curupira_js.build
 Building JavaScript bundle...
 Entry modules: [MyApp.Site, MyApp.Helper]
 Walking dependency tree...
@@ -298,10 +298,10 @@ mix coveralls.html
 *** Project Structure
 
 #+begin_example
-curupira_script/
+curupira_js/
 ├── lib/
-│   ├── curupira_script.ex           # Main API
-│   ├── curupira_script/
+│   ├── curupira_js.ex           # Main API
+│   ├── curupira_js/
 │   │   ├── compiler.ex              # Core compiler
 │   │   ├── translator.ex            # AST → JavaScript
 │   │   ├── beam.ex                  # BEAM file reader
@@ -310,7 +310,7 @@ curupira_script/
 │   │   └── error.ex                 # Error handling
 │   └── mix/
 │       └── tasks/
-│           └── curupira_script.build.ex  # Build task
+│           └── curupira_js.build.ex  # Build task
 ├── priv/
 │   └── javascript/
 │       └── lib/                     # Runtime library
@@ -321,7 +321,7 @@ curupira_script/
 │           ├── json.js              # JSON module
 │           └── http.js              # HTTP client
 ├── test/                            # Elixir tests
-│   ├── curupira_script_test.exs
+│   ├── curupira_js_test.exs
 │   └── fixtures/                    # Test modules
 └── mix.exs
 #+end_example
@@ -354,7 +354,7 @@ curupira_script/
 
 *** Next Steps 🚧
 
-- [ ] Watch mode (=mix curupira_script.watch=)
+- [ ] Watch mode (=mix curupira_js.watch=)
 - [ ] Mix compiler integration (auto-build on =mix compile=)
 - [ ] Template literals for string interpolation
 - [ ] Module attributes support

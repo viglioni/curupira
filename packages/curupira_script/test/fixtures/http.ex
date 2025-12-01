@@ -75,7 +75,7 @@ defmodule Fixtures.HTTP do
       headers: [
         {"Authorization", "Bearer token123"},
         {"Accept", "application/json"},
-        {"User-Agent", "CurupiraScript/1.0"}
+        {"User-Agent", "CurupiraJS/1.0"}
       ]
     )
   end

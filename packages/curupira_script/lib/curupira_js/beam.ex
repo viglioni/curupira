@@ -1,4 +1,4 @@
-defmodule CurupiraScript.Beam do
+defmodule CurupiraJS.Beam do
   @moduledoc """
   Extracts macro-expanded AST from BEAM files.
 
@@ -8,7 +8,7 @@ defmodule CurupiraScript.Beam do
 
   ## Example
 
-      iex> CurupiraScript.Beam.debug_info(MyModule)
+      iex> CurupiraJS.Beam.debug_info(MyModule)
       {:ok, %{module: MyModule, definitions: [...], file: "lib/my_module.ex", ...}}
 
   """

@@ -1,4 +1,4 @@
-defmodule CurupiraScript.MixProject do
+defmodule CurupiraJS.MixProject do
   use Mix.Project
 
   @version "0.33.0-dev"
@@ -6,10 +6,11 @@ defmodule CurupiraScript.MixProject do
 
   def project do
     [
-      app: :curupira_script,
+      app: :curupira_js,
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
+      compilers: Mix.compilers() ++ [:curupira_js],
       deps: deps(),
 
       # Hex
@@ -17,11 +18,11 @@ defmodule CurupiraScript.MixProject do
       package: package(),
 
       # Docs
-      name: "CurupiraScript",
+      name: "CurupiraJS",
       source_url: @source_url,
       docs: docs(),
 
-      # CurupiraScript configuration (example)
+      # CurupiraJS configuration (example)
       curupira_js: [
         input: [Fixtures.Simple, Fixtures.WithArgs],
         output: "js/elixir_bundle.js"
@@ -54,6 +55,9 @@ defmodule CurupiraScript.MixProject do
       # Core dependencies (from ElixirScript)
       {:estree, "~> 2.6"},
 
+      # Watch mode (also used by credo)
+      {:file_system, "~> 1.0", only: [:dev, :test]},
+
       # Development & Testing
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
@@ -85,7 +89,7 @@ defmodule CurupiraScript.MixProject do
 
   defp docs do
     [
-      main: "CurupiraScript",
+      main: "CurupiraJS",
       source_ref: "curupira_script-v#{@version}",
       source_url: @source_url,
       extras: [

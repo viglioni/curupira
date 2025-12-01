@@ -1,21 +1,21 @@
-defmodule CurupiraScript.Compiler do
+defmodule CurupiraJS.Compiler do
   @moduledoc """
-  The entry point for CurupiraScript compilation.
+  The entry point for CurupiraJS compilation.
 
   Takes Elixir module(s) and compiles them to JavaScript (ES2020+).
 
   ## Example
 
-      iex> CurupiraScript.Compiler.compile(MyApp)
+      iex> CurupiraJS.Compiler.compile(MyApp)
       {:ok, %{
         compiled_modules: [MyApp],
-        output_files: [%{path: "priv/curupira_script/build/Elixir.MyApp.js", content: "..."}],
+        output_files: [%{path: "priv/curupira_js/build/Elixir.MyApp.js", content: "..."}],
         source_maps: []
       }}
 
   """
 
-  alias CurupiraScript.{Beam, Translator, Error}
+  alias CurupiraJS.{Beam, Translator, Error}
   alias ESTree.Tools.{Builder, Generator}
 
   @doc """
@@ -28,7 +28,7 @@ defmodule CurupiraScript.Compiler do
 
   ## Options
 
-  - `:output` - Output directory (default: "priv/curupira_script/build")
+  - `:output` - Output directory (default: "priv/curupira_js/build")
   - `:source_maps` - Generate source maps (default: true in dev, false in prod)
   - `:format` - Output format, only `:es` supported (default: `:es`)
 
@@ -109,7 +109,7 @@ defmodule CurupiraScript.Compiler do
   end
 
   defp do_compile(modules, opts) do
-    output_dir = Keyword.get(opts, :output, "priv/curupira_script/build")
+    output_dir = Keyword.get(opts, :output, "priv/curupira_js/build")
     generate_source_maps = Keyword.get(opts, :source_maps, Mix.env() != :prod)
 
     # Extract AST from all modules

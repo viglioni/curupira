@@ -1,6 +1,6 @@
-defmodule CurupiraScriptTest do
+defmodule CurupiraJSTest do
   use ExUnit.Case
-  doctest CurupiraScript
+  doctest CurupiraJS
 
   # Use compiled test fixtures from test/fixtures/
   # These are compiled by test_helper.exs before tests run
@@ -16,42 +16,42 @@ defmodule CurupiraScriptTest do
 
   describe "version/0" do
     test "returns version string" do
-      assert is_binary(CurupiraScript.version())
+      assert is_binary(CurupiraJS.version())
     end
 
     test "returns semantic version format" do
-      version = CurupiraScript.version()
+      version = CurupiraJS.version()
       assert version =~ ~r/^\d+\.\d+\.\d+/
     end
   end
 
   describe "compile/2 - basic API" do
     test "accepts a single module" do
-      assert {:ok, %{compiled_modules: [Fixtures.Simple]}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{compiled_modules: [Fixtures.Simple]}} = CurupiraJS.compile(Simple)
     end
 
     test "accepts a list of modules" do
-      assert {:ok, %{compiled_modules: modules}} = CurupiraScript.compile([Simple, WithArgs])
+      assert {:ok, %{compiled_modules: modules}} = CurupiraJS.compile([Simple, WithArgs])
       assert Fixtures.Simple in modules
       assert Fixtures.WithArgs in modules
     end
 
     test "accepts empty options" do
       assert {:ok, %{compiled_modules: [Fixtures.Simple]}} =
-               CurupiraScript.compile(Simple, [])
+               CurupiraJS.compile(Simple, [])
     end
   end
 
   describe "compile/2 - options handling" do
     test "accepts output option" do
       assert {:ok, %{output_files: [%{path: path}]}} =
-               CurupiraScript.compile(Simple, output: "dist/js")
+               CurupiraJS.compile(Simple, output: "dist/js")
       assert path =~ "dist/js"
     end
 
     test "accepts source_maps option" do
       assert {:ok, %{source_maps: maps}} =
-               CurupiraScript.compile(Simple, source_maps: true)
+               CurupiraJS.compile(Simple, source_maps: true)
       assert is_list(maps)
       assert length(maps) > 0
     end
@@ -59,12 +59,12 @@ defmodule CurupiraScriptTest do
     @tag :skip
     test "accepts format option" do
       assert {:error, :not_implemented} =
-               CurupiraScript.compile(Simple, format: :es)
+               CurupiraJS.compile(Simple, format: :es)
     end
 
     test "accepts multiple options" do
       assert {:ok, %{output_files: [%{path: path}], source_maps: maps}} =
-               CurupiraScript.compile(Simple,
+               CurupiraJS.compile(Simple,
                  output: "dist/js",
                  source_maps: true
                )
@@ -75,50 +75,50 @@ defmodule CurupiraScriptTest do
 
   describe "compile/2 - input validation" do
     test "returns error for non-module atom" do
-      assert {:error, %CurupiraScript.Error{context: {:invalid_module, :not_a_module}}} =
-               CurupiraScript.compile(:not_a_module)
+      assert {:error, %CurupiraJS.Error{context: {:invalid_module, :not_a_module}}} =
+               CurupiraJS.compile(:not_a_module)
     end
 
     test "returns error for nil" do
-      assert {:error, %CurupiraScript.Error{context: {:invalid_input, nil}}} =
-               CurupiraScript.compile(nil)
+      assert {:error, %CurupiraJS.Error{context: {:invalid_input, nil}}} =
+               CurupiraJS.compile(nil)
     end
 
     test "returns error for non-atom in list" do
-      assert {:error, %CurupiraScript.Error{context: {:invalid_module, "string"}}} =
-               CurupiraScript.compile([Simple, "string"])
+      assert {:error, %CurupiraJS.Error{context: {:invalid_module, "string"}}} =
+               CurupiraJS.compile([Simple, "string"])
     end
 
     test "returns error for empty module list" do
-      assert {:error, %CurupiraScript.Error{context: :empty_module_list}} =
-               CurupiraScript.compile([])
+      assert {:error, %CurupiraJS.Error{context: :empty_module_list}} =
+               CurupiraJS.compile([])
     end
 
     test "returns error for invalid options" do
-      assert {:error, %CurupiraScript.Error{context: {:invalid_option, :invalid_key}}} =
-               CurupiraScript.compile(Simple, invalid_key: "value")
+      assert {:error, %CurupiraJS.Error{context: {:invalid_option, :invalid_key}}} =
+               CurupiraJS.compile(Simple, invalid_key: "value")
     end
   end
 
   describe "compile/2 - success response (Phase 1+)" do
     test "returns {:ok, result} on successful compilation" do
-      assert {:ok, result} = CurupiraScript.compile(Simple)
+      assert {:ok, result} = CurupiraJS.compile(Simple)
       assert is_map(result)
     end
 
     test "result contains compiled modules list" do
-      assert {:ok, %{compiled_modules: modules}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{compiled_modules: modules}} = CurupiraJS.compile(Simple)
       assert is_list(modules)
       assert Simple in modules
     end
 
     test "result contains output files" do
-      assert {:ok, %{output_files: files}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{output_files: files}} = CurupiraJS.compile(Simple)
       assert is_list(files)
     end
 
     test "result contains JavaScript code" do
-      assert {:ok, %{output_files: files}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{output_files: files}} = CurupiraJS.compile(Simple)
       assert [%{path: _path, content: js_code}] = files
       assert is_binary(js_code)
     end
@@ -126,24 +126,24 @@ defmodule CurupiraScriptTest do
 
   describe "compile/2 - JavaScript generation (Phase 1+)" do
     test "generates ES module format" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(Simple)
       assert js =~ "export default"
     end
 
     test "generates function for module function" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(Simple)
       assert js =~ "hello"
     end
 
     test "handles string interpolation" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(WithArgs)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(WithArgs)
       # Uses string concatenation with +
       assert js =~ "+"
       assert js =~ "name"
     end
 
     test "handles multiple functions" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(Multiple)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(Multiple)
       assert js =~ "add"
       assert js =~ "subtract"
     end
@@ -152,7 +152,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - multiple modules (Phase 1+)" do
     test "compiles multiple modules" do
       assert {:ok, %{compiled_modules: modules}} =
-               CurupiraScript.compile([Simple, WithArgs])
+               CurupiraJS.compile([Simple, WithArgs])
 
       assert length(modules) == 2
       assert Simple in modules
@@ -160,20 +160,20 @@ defmodule CurupiraScriptTest do
     end
 
     test "generates separate files for each module" do
-      assert {:ok, %{output_files: files}} = CurupiraScript.compile([Simple, WithArgs])
+      assert {:ok, %{output_files: files}} = CurupiraJS.compile([Simple, WithArgs])
       assert length(files) == 2
     end
   end
 
   describe "compile/2 - output directory (Phase 1+)" do
     test "uses default output directory" do
-      assert {:ok, %{output_files: [%{path: path}]}} = CurupiraScript.compile(Simple)
-      assert path =~ "priv/curupira_script/build"
+      assert {:ok, %{output_files: [%{path: path}]}} = CurupiraJS.compile(Simple)
+      assert path =~ "priv/curupira_js/build"
     end
 
     test "uses custom output directory" do
       assert {:ok, %{output_files: [%{path: path}]}} =
-               CurupiraScript.compile(Simple, output: "custom/dir")
+               CurupiraJS.compile(Simple, output: "custom/dir")
 
       assert path =~ "custom/dir"
     end
@@ -181,20 +181,20 @@ defmodule CurupiraScriptTest do
 
   describe "compile/2 - source maps (Phase 2)" do
     test "generates source maps by default in dev" do
-      assert {:ok, %{source_maps: maps}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{source_maps: maps}} = CurupiraJS.compile(Simple)
       assert is_list(maps)
       assert length(maps) > 0
     end
 
     test "can disable source maps" do
       assert {:ok, %{source_maps: maps}} =
-               CurupiraScript.compile(Simple, source_maps: false)
+               CurupiraJS.compile(Simple, source_maps: false)
 
       assert maps == []
     end
 
     test "source map references original Elixir file" do
-      assert {:ok, %{source_maps: [map]}} = CurupiraScript.compile(Simple)
+      assert {:ok, %{source_maps: [map]}} = CurupiraJS.compile(Simple)
       assert map.source =~ ".ex"
     end
   end
@@ -202,14 +202,14 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - error handling (Phase 1+)" do
     test "returns error for module with syntax errors" do
       # NonExistentModule is caught during validation (before compilation)
-      assert {:error, %CurupiraScript.Error{type: :validation_error}} =
-               CurupiraScript.compile(NonExistentModule)
+      assert {:error, %CurupiraJS.Error{type: :validation_error}} =
+               CurupiraJS.compile(NonExistentModule)
     end
 
     test "returns error with information" do
-      assert {:error, error} = CurupiraScript.compile(NonExistentModule)
+      assert {:error, error} = CurupiraJS.compile(NonExistentModule)
 
-      assert %CurupiraScript.Error{} = error
+      assert %CurupiraJS.Error{} = error
       # NonExistentModule fails validation, not compilation
       assert error.type == :validation_error
       assert error.context == {:invalid_module, NonExistentModule}
@@ -219,28 +219,28 @@ defmodule CurupiraScriptTest do
 
   describe "compile/2 - data types (Phase 1+)" do
     test "compiles integers" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(DataTypes)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(DataTypes)
       assert js =~ "42"
     end
 
     test "compiles floats" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(DataTypes)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(DataTypes)
       assert js =~ "3.14"
     end
 
     test "compiles strings" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(DataTypes)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(DataTypes)
       # Should preserve string literal
       assert js =~ "hello"
     end
 
     test "compiles atoms using Symbol.for()" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(DataTypes)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(DataTypes)
       assert js =~ "Symbol.for"
     end
 
     test "compiles lists as arrays" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(DataTypes)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(DataTypes)
       assert js =~ "["
     end
   end
@@ -248,7 +248,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - pattern matching (Phase 1+)" do
     test "compiles pattern matching functions" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(PatternMatch)
+               CurupiraJS.compile(PatternMatch)
 
       # Should reference pattern matching library
       assert is_binary(js)
@@ -256,7 +256,7 @@ defmodule CurupiraScriptTest do
 
     test "handles multiple function clauses" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(PatternMatch)
+               CurupiraJS.compile(PatternMatch)
 
       assert is_binary(js)
     end
@@ -265,21 +265,21 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - control flow (Phase 1+)" do
     test "compiles if/else" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(ControlFlow)
+               CurupiraJS.compile(ControlFlow)
 
       assert is_binary(js)
     end
 
     test "compiles case expressions" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(ControlFlow)
+               CurupiraJS.compile(ControlFlow)
 
       assert is_binary(js)
     end
 
     test "compiles guards" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(ControlFlow)
+               CurupiraJS.compile(ControlFlow)
 
       assert is_binary(js)
     end
@@ -287,7 +287,7 @@ defmodule CurupiraScriptTest do
 
   describe "compile/2 - pipe operator (Phase 1+)" do
     test "compiles pipe operator" do
-      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraScript.compile(Pipes)
+      assert {:ok, %{output_files: [%{content: js}]}} = CurupiraJS.compile(Pipes)
       # Should chain function calls
       assert is_binary(js)
     end
@@ -296,7 +296,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - structs (Phase 1+)" do
     test "compiles struct definitions" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.Structs)
+               CurupiraJS.compile(Fixtures.Structs)
 
       # Should have User class
       assert js =~ "class User"
@@ -307,7 +307,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles struct instantiation" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.Structs)
+               CurupiraJS.compile(Fixtures.Structs)
 
       # create_user should create new User
       assert js =~ "new User"
@@ -315,7 +315,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles struct with defaults" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.Structs)
+               CurupiraJS.compile(Fixtures.Structs)
 
       # Post has default values
       assert js =~ "class Post"
@@ -323,7 +323,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles struct updates" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.Structs)
+               CurupiraJS.compile(Fixtures.Structs)
 
       # update_user should use Object.assign or spread
       assert js =~ "Object.assign" or js =~ "..."
@@ -331,7 +331,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles struct pattern matching" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.Structs)
+               CurupiraJS.compile(Fixtures.Structs)
 
       # pattern_match_user should check __struct__
       assert is_binary(js)
@@ -341,7 +341,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - TypedStruct (Phase 1+)" do
     test "compiles TypedStruct definitions" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.TypedStructs)
+               CurupiraJS.compile(Fixtures.TypedStructs)
 
       # Should generate classes for nested modules
       assert js =~ "class Person"
@@ -350,7 +350,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles TypedStruct with defaults" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.TypedStructs)
+               CurupiraJS.compile(Fixtures.TypedStructs)
 
       # age: 0 default
       # price: 0.0 default
@@ -360,7 +360,7 @@ defmodule CurupiraScriptTest do
 
     test "TypedStruct works with instantiation" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.TypedStructs)
+               CurupiraJS.compile(Fixtures.TypedStructs)
 
       # create_person should work
       assert js =~ "new Person"
@@ -368,7 +368,7 @@ defmodule CurupiraScriptTest do
 
     test "TypedStruct works with updates" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.TypedStructs)
+               CurupiraJS.compile(Fixtures.TypedStructs)
 
       # update_person should work
       assert js =~ "Object.assign"
@@ -376,7 +376,7 @@ defmodule CurupiraScriptTest do
 
     test "TypedStruct works with pattern matching" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-               CurupiraScript.compile(Fixtures.TypedStructs)
+               CurupiraJS.compile(Fixtures.TypedStructs)
 
       # Should check __struct__ field
       assert js =~ "__struct__"
@@ -386,7 +386,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - then/2 and tap/2 (Phase 2)" do
     test "compiles then/2" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should compile to function call
       assert is_binary(js)
@@ -394,7 +394,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles tap/2" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should compile to IIFE that returns original value
       assert is_binary(js)
@@ -402,7 +402,7 @@ defmodule CurupiraScriptTest do
 
     test "chains then/2 and tap/2" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       assert is_binary(js)
     end
@@ -411,7 +411,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - stepped ranges (Phase 2)" do
     test "compiles regular ranges" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should create Range object
       assert js =~ "Range" or js =~ "range"
@@ -419,7 +419,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles stepped ranges with positive step" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should include step parameter
       assert is_binary(js)
@@ -427,7 +427,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles stepped ranges with negative step" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should handle descending ranges
       assert is_binary(js)
@@ -435,7 +435,7 @@ defmodule CurupiraScriptTest do
 
     test "ranges work with Enum" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should be iterable
       assert is_binary(js)
@@ -445,7 +445,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - is_non_struct_map/1 guard (Phase 2)" do
     test "compiles is_non_struct_map/1 guard" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should generate guard check
       assert is_binary(js)
@@ -453,7 +453,7 @@ defmodule CurupiraScriptTest do
 
     test "guard checks for __struct__ field" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should include __struct__ check in guard logic
       assert js =~ "__struct__" or is_binary(js)
@@ -461,7 +461,7 @@ defmodule CurupiraScriptTest do
 
     test "guard works in multi-clause pattern matching" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should generate multiple clauses for accepts_plain_map
       assert js =~ "accepts_plain_map"
@@ -469,7 +469,7 @@ defmodule CurupiraScriptTest do
 
     test "guard generates proper type checks" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should check typeof and null
       assert is_binary(js)
@@ -479,7 +479,7 @@ defmodule CurupiraScriptTest do
   describe "compile/2 - Duration type (Phase 2)" do
     test "compiles Duration.new!/1 with single unit" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should create Duration object
       assert js =~ "Duration" or is_binary(js)
@@ -487,7 +487,7 @@ defmodule CurupiraScriptTest do
 
     test "compiles Duration.new!/1 with multiple units" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should handle multiple time units
       assert is_binary(js)
@@ -495,7 +495,7 @@ defmodule CurupiraScriptTest do
 
     test "Duration struct has __struct__ field" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Duration instances should have __struct__
       assert js =~ "__struct__" or is_binary(js)
@@ -503,7 +503,7 @@ defmodule CurupiraScriptTest do
 
     test "Duration class is generated in output" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should have Duration class declaration
       assert js =~ "class Duration" or js =~ "Duration"
@@ -511,7 +511,7 @@ defmodule CurupiraScriptTest do
 
     test "Duration supports all time units" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should compile create_duration_all_units function
       assert js =~ "create_duration_all_units"
@@ -519,7 +519,7 @@ defmodule CurupiraScriptTest do
 
     test "Duration handles empty initialization" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should compile create_duration_empty function
       assert js =~ "create_duration_empty"
@@ -527,7 +527,7 @@ defmodule CurupiraScriptTest do
 
     test "Duration handles negative values" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should compile create_duration_negative function
       assert js =~ "create_duration_negative"
@@ -535,7 +535,7 @@ defmodule CurupiraScriptTest do
 
     test "Duration handles microseconds" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(ModernElixir)
+        CurupiraJS.compile(ModernElixir)
 
       # Should compile create_duration_microseconds function
       assert js =~ "create_duration_microseconds"
@@ -546,7 +546,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "compiles HTTP.get/1" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should import HTTP from runtime library
       assert js =~ "import { HTTP, HTTPResponse } from './lib/index.js';"
@@ -555,7 +555,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "compiles HTTP.get/2 with headers" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile fetch_with_auth function
       assert js =~ "fetch_with_auth"
@@ -564,7 +564,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "compiles HTTP.post/2 with body" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile create_user function
       assert js =~ "create_user"
@@ -573,7 +573,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "compiles HTTP.put/2" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile update_user function
       assert js =~ "update_user"
@@ -582,7 +582,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "compiles HTTP.delete/1" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile delete_user function
       assert js =~ "delete_user"
@@ -591,7 +591,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "compiles HTTP.request/3" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile custom_request function
       assert js =~ "custom_request"
@@ -600,7 +600,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "HTTP class uses fetch API" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should reference fetch in HTTP class
       assert js =~ "fetch"
@@ -609,7 +609,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "HTTP returns Response struct" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should import HTTPResponse from runtime library
       assert js =~ "import { HTTP, HTTPResponse } from './lib/index.js';"
@@ -618,7 +618,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "HTTPResponse has __struct__ field" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should set __struct__ symbol
       assert js =~ "__struct__"
@@ -628,7 +628,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "HTTP methods are async" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should use async/await - checking for await which implies async
       assert js =~ "await"
@@ -637,7 +637,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "HTTP returns tuple format" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should return {:ok, response} or {:error, reason}
       assert js =~ "__tuple__"
@@ -646,7 +646,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "handles response pattern matching" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile handle_response function
       assert js =~ "handle_response"
@@ -655,7 +655,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "handles headers option" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should compile fetch_with_multiple_headers
       assert js =~ "fetch_with_multiple_headers"
@@ -664,7 +664,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "handles body option" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Body should be passed to fetch
       assert is_binary(js)
@@ -673,7 +673,7 @@ defmodule CurupiraScriptTest do
     @tag :http
     test "handles error responses" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(HTTP)
+        CurupiraJS.compile(HTTP)
 
       # Should handle error tuples
       assert is_binary(js)
@@ -686,7 +686,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "compiles JSON.encode!/1" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should have JSON class with static encode method
       assert js =~ "JSON"
@@ -696,7 +696,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "compiles JSON.decode!/1" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should have JSON class with static decode method
       assert js =~ "JSON"
@@ -706,7 +706,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles JSON.encode for maps" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile encode_map function
       assert js =~ "encode_map"
@@ -715,7 +715,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles JSON.encode for lists" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile encode_list function
       assert js =~ "encode_list"
@@ -724,7 +724,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles JSON.decode for objects" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile decode_object function
       assert js =~ "decode_object"
@@ -733,7 +733,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles JSON.decode for arrays" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile decode_array function
       assert js =~ "decode_array"
@@ -742,7 +742,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles nested structures" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile encode_nested function
       assert js =~ "encode_nested"
@@ -751,7 +751,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles safe encode (returns tuples)" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile encode_safe function
       assert js =~ "encode_safe"
@@ -760,7 +760,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles safe decode (returns tuples)" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile decode_safe function
       assert js =~ "decode_safe"
@@ -769,7 +769,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles roundtrip encoding/decoding" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile roundtrip function
       assert js =~ "roundtrip"
@@ -778,7 +778,7 @@ defmodule CurupiraScriptTest do
     @tag :json
     test "handles decode with options" do
       assert {:ok, %{output_files: [%{content: js}]}} =
-        CurupiraScript.compile(JSONModule)
+        CurupiraJS.compile(JSONModule)
 
       # Should compile decode_atoms_as_keys function
       assert js =~ "decode_atoms_as_keys"

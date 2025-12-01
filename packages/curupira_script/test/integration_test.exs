@@ -1,9 +1,9 @@
-defmodule CurupiraScriptIntegrationTest do
+defmodule CurupiraJSIntegrationTest do
   use ExUnit.Case
 
   @moduletag :integration
 
-  alias CurupiraScript.{DependencyWalker, Bundler, Compiler}
+  alias CurupiraJS.{DependencyWalker, Bundler, Compiler}
   alias Fixtures.Simple
   alias Fixtures.WithArgs
   alias Fixtures.Multiple
@@ -152,7 +152,7 @@ defmodule CurupiraScriptIntegrationTest do
     end
   end
 
-  describe "Mix.Tasks.CurupiraScript.Build task" do
+  describe "Mix.Tasks.CurupiraJS.Build task" do
     @tag :mix_task
     test "builds bundle with configuration from mix.exs" do
       # This test uses the actual config from mix.exs
@@ -161,7 +161,7 @@ defmodule CurupiraScriptIntegrationTest do
       # Clean up first
       File.rm_rf("js/elixir_bundle.js")
 
-      Mix.Tasks.CurupiraScript.Build.run([])
+      Mix.Tasks.CurupiraJS.Build.run([])
 
       # Verify bundle was created at configured path
       assert File.exists?("js/elixir_bundle.js")
@@ -177,7 +177,7 @@ defmodule CurupiraScriptIntegrationTest do
       # Remove js directory to test creation
       File.rm_rf("js")
 
-      Mix.Tasks.CurupiraScript.Build.run([])
+      Mix.Tasks.CurupiraJS.Build.run([])
 
       # Should create js/ directory and bundle
       assert File.exists?("js/elixir_bundle.js")
@@ -187,62 +187,62 @@ defmodule CurupiraScriptIntegrationTest do
     end
   end
 
-  describe "Mix.Compilers.CurupiraScript" do
+  describe "Mix.Compilers.CurupiraJs" do
     @tag :mix_compiler
     test "returns {:ok, []} on successful compilation" do
       # Use actual config from mix.exs
       # Clean manifest and output to force rebuild
-      File.rm(".mix_curupira_script_manifest")
+      File.rm(".mix_curupira_js_manifest")
       File.rm_rf("js/elixir_bundle.js")
 
-      assert {:ok, []} = Mix.Compilers.CurupiraScript.run([])
+      assert {:ok, []} = Mix.Compilers.CurupiraJs.run([])
       assert File.exists?("js/elixir_bundle.js")
     end
 
     @tag :mix_compiler
     test "returns {:noop, []} when up to date" do
       # First compilation
-      File.rm(".mix_curupira_script_manifest")
+      File.rm(".mix_curupira_js_manifest")
       File.rm_rf("js/elixir_bundle.js")
 
-      assert {:ok, []} = Mix.Compilers.CurupiraScript.run([])
+      assert {:ok, []} = Mix.Compilers.CurupiraJs.run([])
 
       # Second compilation should be noop
-      assert {:noop, []} = Mix.Compilers.CurupiraScript.run([])
+      assert {:noop, []} = Mix.Compilers.CurupiraJs.run([])
     end
 
     @tag :mix_compiler
     test "rebuilds when output file is deleted" do
       # First compilation
-      File.rm(".mix_curupira_script_manifest")
+      File.rm(".mix_curupira_js_manifest")
       File.rm_rf("js/elixir_bundle.js")
 
-      assert {:ok, []} = Mix.Compilers.CurupiraScript.run([])
+      assert {:ok, []} = Mix.Compilers.CurupiraJs.run([])
 
       # Delete output file
       File.rm_rf("js/elixir_bundle.js")
 
       # Should rebuild
-      assert {:ok, []} = Mix.Compilers.CurupiraScript.run([])
+      assert {:ok, []} = Mix.Compilers.CurupiraJs.run([])
       assert File.exists?("js/elixir_bundle.js")
     end
 
     @tag :mix_compiler
     test "clean/0 removes manifest file" do
       # Build to create manifest
-      Mix.Compilers.CurupiraScript.run([])
-      assert File.exists?(".mix_curupira_script_manifest")
+      Mix.Compilers.CurupiraJs.run([])
+      assert File.exists?(".mix_curupira_js_manifest")
 
       # Clean
-      Mix.Compilers.CurupiraScript.clean()
+      Mix.Compilers.CurupiraJs.clean()
 
       # Manifest should be removed
-      refute File.exists?(".mix_curupira_script_manifest")
+      refute File.exists?(".mix_curupira_js_manifest")
     end
 
     @tag :mix_compiler
     test "manifests/0 returns manifest file path" do
-      assert [".mix_curupira_script_manifest"] = Mix.Compilers.CurupiraScript.manifests()
+      assert [".mix_curupira_js_manifest"] = Mix.Compilers.CurupiraJs.manifests()
     end
   end
 
@@ -310,11 +310,11 @@ defmodule CurupiraScriptIntegrationTest do
     test "full Mix workflow: compile task integration" do
       # This test verifies that `mix compile` automatically builds the bundle
       # Use actual config from mix.exs
-      File.rm(".mix_curupira_script_manifest")
+      File.rm(".mix_curupira_js_manifest")
       File.rm_rf("js/elixir_bundle.js")
 
       # Run the compiler through Mix task
-      assert {:ok, []} = Mix.Tasks.Compile.CurupiraScript.run([])
+      assert {:ok, []} = Mix.Tasks.Compile.CurupiraJs.run([])
 
       # Verify output
       assert File.exists?("js/elixir_bundle.js")

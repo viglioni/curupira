@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.CurupiraScript.Build do
+defmodule Mix.Tasks.CurupiraJs.Build do
   use Mix.Task
 
   @shortdoc "Builds JavaScript bundle from Elixir modules"
@@ -21,7 +21,7 @@ defmodule Mix.Tasks.CurupiraScript.Build do
 
   ## Usage
 
-      $ mix curupira_script.build
+      $ mix curupira_js.build
 
   This will:
   1. Find all dependencies of the entry modules
@@ -30,7 +30,7 @@ defmodule Mix.Tasks.CurupiraScript.Build do
   4. Write to the output path
   """
 
-  alias CurupiraScript.{DependencyWalker, Compiler, Bundler}
+  alias CurupiraJS.{DependencyWalker, Compiler, Bundler}
 
   @impl Mix.Task
   def run(_args) do

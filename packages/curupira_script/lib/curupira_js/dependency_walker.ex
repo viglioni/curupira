@@ -1,4 +1,4 @@
-defmodule CurupiraScript.DependencyWalker do
+defmodule CurupiraJS.DependencyWalker do
   @moduledoc """
   Walks the dependency tree starting from entry modules.
 
@@ -6,7 +6,7 @@ defmodule CurupiraScript.DependencyWalker do
   includes them in the compilation set.
   """
 
-  alias CurupiraScript.Beam
+  alias CurupiraJS.Beam
 
   @doc """
   Find all modules that need to be compiled starting from entry modules.
