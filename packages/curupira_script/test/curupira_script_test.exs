@@ -224,17 +224,19 @@ defmodule CurupiraScriptTest do
     test "returns error for module with syntax errors" do
       # This would require a module with invalid Elixir code
       # We'll implement this when we can actually compile
-      assert {:error, {:compilation_error, _reason}} =
+      assert {:error, %CurupiraScript.Error{type: :compilation_error}} =
                CurupiraScript.compile(NonExistentModule)
     end
 
     @tag :phase1
     test "returns error with line information" do
-      assert {:error, {:compilation_error, info}} =
-               CurupiraScript.compile(NonExistentModule)
+      assert {:error, error} = CurupiraScript.compile(NonExistentModule)
 
-      assert is_map(info)
-      assert Map.has_key?(info, :module)
+      assert %CurupiraScript.Error{} = error
+      assert error.type == :compilation_error
+      assert error.module == NonExistentModule
+      assert is_binary(error.message)
+      assert is_binary(error.hint)
     end
   end
 

@@ -417,9 +417,9 @@ defmodule CurupiraScript.Translator do
 
   # Catch-all for unsupported expressions
   def translate(expr) do
-    # For now, return null for anything we don't support yet
-    # TODO: Add proper error handling
-    IO.warn("Unsupported expression: #{inspect(expr)}")
+    # For now, return null and warn for anything we don't support yet
+    # In the future, this should propagate errors up to the compiler
+    IO.warn(CurupiraScript.Error.format(CurupiraScript.Error.translation_error(expr)))
     J.literal(nil)
   end
 

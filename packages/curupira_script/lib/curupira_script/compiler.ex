@@ -15,7 +15,7 @@ defmodule CurupiraScript.Compiler do
 
   """
 
-  alias CurupiraScript.{Beam, Translator}
+  alias CurupiraScript.{Beam, Translator, Error}
   alias ESTree.Tools.{Builder, Generator}
 
   @doc """
@@ -59,7 +59,7 @@ defmodule CurupiraScript.Compiler do
   # Private functions
 
   defp validate_input([], _opts) do
-    {:error, :empty_module_list}
+    {:error, Error.validation_error(:empty_module_list)}
   end
 
   defp validate_input(modules, opts) when is_list(modules) do
@@ -69,7 +69,7 @@ defmodule CurupiraScript.Compiler do
         validate_options(opts)
 
       invalid ->
-        {:error, {:invalid_module, invalid}}
+        {:error, Error.validation_error({:invalid_module, invalid})}
     end
   end
 
@@ -124,7 +124,9 @@ defmodule CurupiraScript.Compiler do
             {:ok, {module, info}}
 
           {:error, reason} ->
-            {:error, {:compilation_error, %{module: module, reason: reason}}}
+            # Get file info from module if available
+            file = get_module_file(module)
+            {:error, Error.compilation_error(module, reason, file: file)}
         end
       end)
 
@@ -141,6 +143,21 @@ defmodule CurupiraScript.Compiler do
 
       error ->
         error
+    end
+  end
+
+  defp get_module_file(module) do
+    # Try to get file from module_info
+    try do
+      module.module_info(:compile)
+      |> Keyword.get(:source)
+      |> case do
+        nil -> nil
+        source when is_list(source) -> List.to_string(source)
+        source -> source
+      end
+    rescue
+      _ -> nil
     end
   end
 
