@@ -21,6 +21,12 @@ defmodule CurupiraScript.MixProject do
       source_url: @source_url,
       docs: docs(),
 
+      # CurupiraScript configuration (example)
+      curupira_js: [
+        input: [Fixtures.Simple, Fixtures.WithArgs],
+        output: "js/elixir_bundle.js"
+      ],
+
       # Testing
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
