@@ -740,4 +740,109 @@ defmodule CurupiraScriptTest do
       assert is_binary(js)
     end
   end
+
+  describe "JSON module (Elixir 1.18+)" do
+    alias Fixtures.JSONModule
+
+    @tag :json
+    test "compiles JSON.encode!/1" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should have JSON class with static encode method
+      assert js =~ "JSON"
+      assert js =~ "encode"
+    end
+
+    @tag :json
+    test "compiles JSON.decode!/1" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should have JSON class with static decode method
+      assert js =~ "JSON"
+      assert js =~ "decode"
+    end
+
+    @tag :json
+    test "handles JSON.encode for maps" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile encode_map function
+      assert js =~ "encode_map"
+    end
+
+    @tag :json
+    test "handles JSON.encode for lists" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile encode_list function
+      assert js =~ "encode_list"
+    end
+
+    @tag :json
+    test "handles JSON.decode for objects" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile decode_object function
+      assert js =~ "decode_object"
+    end
+
+    @tag :json
+    test "handles JSON.decode for arrays" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile decode_array function
+      assert js =~ "decode_array"
+    end
+
+    @tag :json
+    test "handles nested structures" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile encode_nested function
+      assert js =~ "encode_nested"
+    end
+
+    @tag :json
+    test "handles safe encode (returns tuples)" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile encode_safe function
+      assert js =~ "encode_safe"
+    end
+
+    @tag :json
+    test "handles safe decode (returns tuples)" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile decode_safe function
+      assert js =~ "decode_safe"
+    end
+
+    @tag :json
+    test "handles roundtrip encoding/decoding" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile roundtrip function
+      assert js =~ "roundtrip"
+    end
+
+    @tag :json
+    test "handles decode with options" do
+      assert {:ok, %{output_files: [%{content: js}]}} =
+        CurupiraScript.compile(JSONModule)
+
+      # Should compile decode_atoms_as_keys function
+      assert js =~ "decode_atoms_as_keys"
+    end
+  end
 end

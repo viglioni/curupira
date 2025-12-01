@@ -376,6 +376,30 @@ defmodule CurupiraScript.Translator do
       {HTTP, :request} ->
         translate_http_call("request", args)
 
+      # JSON.encode!/1 and JSON.encode!/2 - translate to JSON.encode!(...)
+      {{:__aliases__, _, [:JSON]}, :encode!} ->
+        translate_json_call("encode!", args)
+      {JSON, :encode!} ->
+        translate_json_call("encode!", args)
+
+      # JSON.decode!/1 and JSON.decode!/2 - translate to JSON.decode!(...)
+      {{:__aliases__, _, [:JSON]}, :decode!} ->
+        translate_json_call("decode!", args)
+      {JSON, :decode!} ->
+        translate_json_call("decode!", args)
+
+      # JSON.encode/1 and JSON.encode/2 - translate to JSON.encode(...)
+      {{:__aliases__, _, [:JSON]}, :encode} ->
+        translate_json_call("encode", args)
+      {JSON, :encode} ->
+        translate_json_call("encode", args)
+
+      # JSON.decode/1 and JSON.decode/2 - translate to JSON.decode(...)
+      {{:__aliases__, _, [:JSON]}, :decode} ->
+        translate_json_call("decode", args)
+      {JSON, :decode} ->
+        translate_json_call("decode", args)
+
       # Other remote calls
       _ ->
         module_name = module_to_string(module)
@@ -549,6 +573,69 @@ defmodule CurupiraScript.Translator do
       # If headers is not a list, translate it directly
       _ ->
         translate(headers)
+    end
+  end
+
+  defp translate_json_call(method_name, args) do
+    # JSON.encode!(data) -> JSON.encode!(data)
+    # JSON.decode!(json) -> JSON.decode!(json)
+    # JSON.decode!(json, opts) -> JSON.decode!(json, { keys: :atoms })
+
+    case args do
+      # Single argument: JSON.encode!(data) or JSON.decode!(json)
+      [arg] ->
+        J.call_expression(
+          J.member_expression(
+            J.identifier("JSON"),
+            J.identifier(method_name)
+          ),
+          [translate(arg)]
+        )
+
+      # Two arguments for decode with options: JSON.decode!(json, opts)
+      [json, opts] when method_name in ["decode!", "decode"] ->
+        # Translate options keyword list to JavaScript object
+        opts_js = translate_json_options(opts)
+
+        J.call_expression(
+          J.member_expression(
+            J.identifier("JSON"),
+            J.identifier(method_name)
+          ),
+          [translate(json), opts_js]
+        )
+
+      # Fallback
+      _ ->
+        IO.warn("Unexpected JSON.#{method_name} arguments: #{inspect(args)}")
+        J.literal(nil)
+    end
+  end
+
+  defp translate_json_options(opts) do
+    # Convert Elixir keyword list to JavaScript object
+    # [keys: :atoms] -> { keys: Symbol.for('atoms') }
+
+    case opts do
+      # Keyword list
+      opts when is_list(opts) ->
+        properties = Enum.map(opts, fn {key, value} ->
+          case key do
+            :keys ->
+              # Convert :atoms to Symbol.for('atoms')
+              J.property(J.identifier("keys"), translate(value))
+
+            _ ->
+              # Other options
+              J.property(J.identifier(Atom.to_string(key)), translate(value))
+          end
+        end)
+
+        J.object_expression(properties)
+
+      # If opts is not a keyword list, try to translate it directly
+      _ ->
+        translate(opts)
     end
   end
 

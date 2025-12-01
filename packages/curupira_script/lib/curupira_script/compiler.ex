@@ -198,13 +198,16 @@ defmodule CurupiraScript.Compiler do
     http_response_class = build_http_response_class()
     http_class = build_http_class()
 
-    # Build ES module: http classes + duration + range + helpers + struct classes + export default { ...functions }
+    # Add JSON class runtime helper (returns list of helper functions + class)
+    json_nodes = build_json_class()
+
+    # Build ES module: json + http classes + duration + range + helpers + struct classes + export default { ...functions }
     module_ast =
       Builder.export_default_declaration(
         Builder.object_expression(functions)
       )
 
-    {:ok, Builder.program([http_response_class, http_class, duration_class, range_class] ++ helpers ++ struct_classes ++ [module_ast])}
+    {:ok, Builder.program(json_nodes ++ [http_response_class, http_class, duration_class, range_class] ++ helpers ++ struct_classes ++ [module_ast])}
   end
 
   defp translate_functions(definitions) do
@@ -1926,6 +1929,565 @@ defmodule CurupiraScript.Compiler do
           Builder.block_statement(catch_body)
         ),
         nil  # No finally clause
+      )
+    ]
+  end
+
+  defp build_json_class do
+    # Generate JSON class with static methods for encoding/decoding JSON
+    # class JSON {
+    #   static encode(data) { return this.encodeInternal(data, false); }
+    #   static encode!(data) { return this.encodeInternal(data, true); }
+    #   static decode(json, opts = {}) { return this.decodeInternal(json, opts, false); }
+    #   static decode!(json, opts = {}) { return this.decodeInternal(json, opts, true); }
+    #   static encodeInternal(data, shouldThrow) { ... }
+    #   static decodeInternal(json, opts, shouldThrow) { ... }
+    # }
+
+    # Build encode! method (throws on error)
+    encode_bang_method = Builder.method_definition(
+      Builder.identifier("encode!"),
+      Builder.function_expression(
+        [Builder.identifier("data")],
+        [],
+        Builder.block_statement([
+          Builder.return_statement(
+            Builder.call_expression(
+              Builder.member_expression(
+                Builder.identifier("this"),
+                Builder.identifier("encodeInternal"),
+                false
+              ),
+              [Builder.identifier("data"), Builder.literal(true)]
+            )
+          )
+        ]),
+        false,  # generator
+        false,  # expression
+        false   # async
+      ),
+      :method,
+      false,  # computed
+      true    # static
+    )
+
+    # Build decode! method (throws on error)
+    decode_bang_method = Builder.method_definition(
+      Builder.identifier("decode!"),
+      Builder.function_expression(
+        [Builder.identifier("json"), Builder.identifier("opts")],
+        [],
+        Builder.block_statement([
+          # opts = opts || {}
+          Builder.expression_statement(
+            Builder.assignment_expression(
+              :"=",
+              Builder.identifier("opts"),
+              Builder.logical_expression(
+                :"||",
+                Builder.identifier("opts"),
+                Builder.object_expression([])
+              )
+            )
+          ),
+          Builder.return_statement(
+            Builder.call_expression(
+              Builder.member_expression(
+                Builder.identifier("this"),
+                Builder.identifier("decodeInternal"),
+                false
+              ),
+              [Builder.identifier("json"), Builder.identifier("opts"), Builder.literal(true)]
+            )
+          )
+        ]),
+        false,  # generator
+        false,  # expression
+        false   # async
+      ),
+      :method,
+      false,  # computed
+      true    # static
+    )
+
+    # Build encodeInternal method
+    encode_internal_method = Builder.method_definition(
+      Builder.identifier("encodeInternal"),
+      Builder.function_expression(
+        [Builder.identifier("data"), Builder.identifier("shouldThrow")],
+        [],
+        Builder.block_statement([
+          # try { return JSON.stringify(convertElixirToJS(data)); }
+          Builder.try_statement(
+            Builder.block_statement([
+              Builder.return_statement(
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("globalThis"),
+                    Builder.identifier("JSON"),
+                    false
+                  )
+                  |> then(fn json_obj ->
+                    Builder.member_expression(
+                      json_obj,
+                      Builder.identifier("stringify"),
+                      false
+                    )
+                  end),
+                  [
+                    Builder.call_expression(
+                      Builder.identifier("convertElixirToJS"),
+                      [Builder.identifier("data")]
+                    )
+                  ]
+                )
+              )
+            ]),
+            # catch (error) { if (shouldThrow) throw error; return { __tuple__: true, values: [Symbol.for('error'), error] }; }
+            Builder.catch_clause(
+              Builder.identifier("error"),
+              Builder.block_statement([
+                Builder.if_statement(
+                  Builder.identifier("shouldThrow"),
+                  Builder.throw_statement(Builder.identifier("error")),
+                  nil
+                ),
+                Builder.return_statement(
+                  Builder.object_expression([
+                    Builder.property(
+                      Builder.identifier("__tuple__"),
+                      Builder.literal(true)
+                    ),
+                    Builder.property(
+                      Builder.identifier("values"),
+                      Builder.array_expression([
+                        Builder.call_expression(
+                          Builder.member_expression(
+                            Builder.identifier("Symbol"),
+                            Builder.identifier("for"),
+                            false
+                          ),
+                          [Builder.literal("error")]
+                        ),
+                        Builder.identifier("error")
+                      ])
+                    )
+                  ])
+                )
+              ])
+            ),
+            nil  # No finally
+          )
+        ]),
+        false,  # generator
+        false,  # expression
+        false   # async
+      ),
+      :method,
+      false,  # computed
+      true    # static
+    )
+
+    # Build decodeInternal method
+    decode_internal_method = Builder.method_definition(
+      Builder.identifier("decodeInternal"),
+      Builder.function_expression(
+        [Builder.identifier("json"), Builder.identifier("opts"), Builder.identifier("shouldThrow")],
+        [],
+        Builder.block_statement([
+          # try { const parsed = JSON.parse(json); return convertJSToElixir(parsed, opts); }
+          Builder.try_statement(
+            Builder.block_statement([
+              Builder.variable_declaration(
+                [
+                  Builder.variable_declarator(
+                    Builder.identifier("parsed"),
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("globalThis"),
+                        Builder.identifier("JSON"),
+                        false
+                      )
+                      |> then(fn json_obj ->
+                        Builder.member_expression(
+                          json_obj,
+                          Builder.identifier("parse"),
+                          false
+                        )
+                      end),
+                      [Builder.identifier("json")]
+                    )
+                  )
+                ],
+                :const
+              ),
+              Builder.return_statement(
+                Builder.call_expression(
+                  Builder.identifier("convertJSToElixir"),
+                  [Builder.identifier("parsed"), Builder.identifier("opts")]
+                )
+              )
+            ]),
+            # catch (error) { if (shouldThrow) throw error; return { __tuple__: true, values: [Symbol.for('error'), error] }; }
+            Builder.catch_clause(
+              Builder.identifier("error"),
+              Builder.block_statement([
+                Builder.if_statement(
+                  Builder.identifier("shouldThrow"),
+                  Builder.throw_statement(Builder.identifier("error")),
+                  nil
+                ),
+                Builder.return_statement(
+                  Builder.object_expression([
+                    Builder.property(
+                      Builder.identifier("__tuple__"),
+                      Builder.literal(true)
+                    ),
+                    Builder.property(
+                      Builder.identifier("values"),
+                      Builder.array_expression([
+                        Builder.call_expression(
+                          Builder.member_expression(
+                            Builder.identifier("Symbol"),
+                            Builder.identifier("for"),
+                            false
+                          ),
+                          [Builder.literal("error")]
+                        ),
+                        Builder.identifier("error")
+                      ])
+                    )
+                  ])
+                )
+              ])
+            ),
+            nil  # No finally
+          )
+        ]),
+        false,  # generator
+        false,  # expression
+        false   # async
+      ),
+      :method,
+      false,  # computed
+      true    # static
+    )
+
+    # Build helper function: convertElixirToJS (converts Elixir data structures to plain JS for JSON)
+    convert_elixir_to_js = Builder.function_declaration(
+      Builder.identifier("convertElixirToJS"),
+      [Builder.identifier("data")],
+      [],
+      Builder.block_statement([
+        # if (data === null || data === undefined) return null;
+        Builder.if_statement(
+          Builder.logical_expression(
+            :"||",
+            Builder.binary_expression(
+              :"===",
+              Builder.identifier("data"),
+              Builder.literal(nil)
+            ),
+            Builder.binary_expression(
+              :"===",
+              Builder.identifier("data"),
+              Builder.identifier("undefined")
+            )
+          ),
+          Builder.return_statement(Builder.literal(nil)),
+          nil
+        ),
+        # if (typeof data === 'symbol') return data.description;
+        Builder.if_statement(
+          Builder.binary_expression(
+            :"===",
+            Builder.unary_expression(
+              :typeof,
+              true,  # prefix
+              Builder.identifier("data")
+            ),
+            Builder.literal("symbol")
+          ),
+          Builder.return_statement(
+            Builder.member_expression(
+              Builder.identifier("data"),
+              Builder.identifier("description"),
+              false
+            )
+          ),
+          nil
+        ),
+        # if (data instanceof Map) { const obj = {}; for (const [k, v] of data) obj[convertElixirToJS(k)] = convertElixirToJS(v); return obj; }
+        Builder.if_statement(
+          Builder.binary_expression(
+            :instanceof,
+            Builder.identifier("data"),
+            Builder.identifier("Map")
+          ),
+          Builder.block_statement([
+            Builder.variable_declaration(
+              [Builder.variable_declarator(Builder.identifier("obj"), Builder.object_expression([]))],
+              :const
+            ),
+            Builder.for_of_statement(
+              Builder.variable_declaration(
+                [Builder.variable_declarator(
+                  Builder.array_pattern([Builder.identifier("k"), Builder.identifier("v")])
+                )],
+                :const
+              ),
+              Builder.identifier("data"),
+              Builder.block_statement([
+                Builder.expression_statement(
+                  Builder.assignment_expression(
+                    :"=",
+                    Builder.member_expression(
+                      Builder.identifier("obj"),
+                      Builder.call_expression(
+                        Builder.identifier("convertElixirToJS"),
+                        [Builder.identifier("k")]
+                      ),
+                      true
+                    ),
+                    Builder.call_expression(
+                      Builder.identifier("convertElixirToJS"),
+                      [Builder.identifier("v")]
+                    )
+                  )
+                )
+              ])
+            ),
+            Builder.return_statement(Builder.identifier("obj"))
+          ]),
+          nil
+        ),
+        # if (Array.isArray(data)) return data.map(convertElixirToJS);
+        Builder.if_statement(
+          Builder.call_expression(
+            Builder.member_expression(
+              Builder.identifier("Array"),
+              Builder.identifier("isArray"),
+              false
+            ),
+            [Builder.identifier("data")]
+          ),
+          Builder.return_statement(
+            Builder.call_expression(
+              Builder.member_expression(
+                Builder.identifier("data"),
+                Builder.identifier("map"),
+                false
+              ),
+              [Builder.identifier("convertElixirToJS")]
+            )
+          ),
+          nil
+        ),
+        # return data;
+        Builder.return_statement(Builder.identifier("data"))
+      ])
+    )
+
+    # Build helper function: convertJSToElixir (converts plain JS to Elixir data structures after JSON parse)
+    convert_js_to_elixir = Builder.function_declaration(
+      Builder.identifier("convertJSToElixir"),
+      [Builder.identifier("data"), Builder.identifier("opts")],
+      [],
+      Builder.block_statement([
+        # if (data === null) return null;
+        Builder.if_statement(
+          Builder.binary_expression(
+            :"===",
+            Builder.identifier("data"),
+            Builder.literal(nil)
+          ),
+          Builder.return_statement(Builder.literal(nil)),
+          nil
+        ),
+        # if (typeof data === 'object' && !Array.isArray(data)) { const map = new Map(); for (const [k, v] of Object.entries(data)) { const key = (opts.keys === Symbol.for('atoms')) ? Symbol.for(k) : k; map.set(key, convertJSToElixir(v, opts)); } return map; }
+        Builder.if_statement(
+          Builder.logical_expression(
+            :"&&",
+            Builder.binary_expression(
+              :"===",
+              Builder.unary_expression(
+                :typeof,
+                true,  # prefix
+                Builder.identifier("data")
+              ),
+              Builder.literal("object")
+            ),
+            Builder.unary_expression(
+              :"!",
+              true,  # prefix
+              Builder.call_expression(
+                Builder.member_expression(
+                  Builder.identifier("Array"),
+                  Builder.identifier("isArray"),
+                  false
+                ),
+                [Builder.identifier("data")]
+              )
+            )
+          ),
+          Builder.block_statement([
+            Builder.variable_declaration(
+              [Builder.variable_declarator(
+                Builder.identifier("map"),
+                Builder.new_expression(Builder.identifier("Map"), [])
+              )],
+              :const
+            ),
+            Builder.for_of_statement(
+              Builder.variable_declaration(
+                [Builder.variable_declarator(
+                  Builder.array_pattern([Builder.identifier("k"), Builder.identifier("v")])
+                )],
+                :const
+              ),
+              Builder.call_expression(
+                Builder.member_expression(
+                  Builder.identifier("Object"),
+                  Builder.identifier("entries"),
+                  false
+                ),
+                [Builder.identifier("data")]
+              ),
+              Builder.block_statement([
+                # let key;
+                # if (opts.keys === Symbol.for('atoms')) {
+                #   key = Symbol.for(k);
+                # } else {
+                #   key = k;
+                # }
+                Builder.variable_declaration(
+                  [Builder.variable_declarator(Builder.identifier("key"))],
+                  :let
+                ),
+                Builder.if_statement(
+                  Builder.binary_expression(
+                    :"===",
+                    Builder.member_expression(
+                      Builder.identifier("opts"),
+                      Builder.identifier("keys"),
+                      false
+                    ),
+                    Builder.call_expression(
+                      Builder.member_expression(
+                        Builder.identifier("Symbol"),
+                        Builder.identifier("for"),
+                        false
+                      ),
+                      [Builder.literal("atoms")]
+                    )
+                  ),
+                  Builder.block_statement([
+                    Builder.expression_statement(
+                      Builder.assignment_expression(
+                        :"=",
+                        Builder.identifier("key"),
+                        Builder.call_expression(
+                          Builder.member_expression(
+                            Builder.identifier("Symbol"),
+                            Builder.identifier("for"),
+                            false
+                          ),
+                          [Builder.identifier("k")]
+                        )
+                      )
+                    )
+                  ]),
+                  Builder.block_statement([
+                    Builder.expression_statement(
+                      Builder.assignment_expression(
+                        :"=",
+                        Builder.identifier("key"),
+                        Builder.identifier("k")
+                      )
+                    )
+                  ])
+                ),
+                Builder.expression_statement(
+                  Builder.call_expression(
+                    Builder.member_expression(
+                      Builder.identifier("map"),
+                      Builder.identifier("set"),
+                      false
+                    ),
+                    [
+                      Builder.identifier("key"),
+                      Builder.call_expression(
+                        Builder.identifier("convertJSToElixir"),
+                        [Builder.identifier("v"), Builder.identifier("opts")]
+                      )
+                    ]
+                  )
+                )
+              ])
+            ),
+            Builder.return_statement(Builder.identifier("map"))
+          ]),
+          nil
+        ),
+        # if (Array.isArray(data)) return Object.freeze(data.map(d => convertJSToElixir(d, opts)));
+        Builder.if_statement(
+          Builder.call_expression(
+            Builder.member_expression(
+              Builder.identifier("Array"),
+              Builder.identifier("isArray"),
+              false
+            ),
+            [Builder.identifier("data")]
+          ),
+          Builder.return_statement(
+            Builder.call_expression(
+              Builder.member_expression(
+                Builder.identifier("Object"),
+                Builder.identifier("freeze"),
+                false
+              ),
+              [
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("data"),
+                    Builder.identifier("map"),
+                    false
+                  ),
+                  [
+                    Builder.arrow_function_expression(
+                      [Builder.identifier("d")],
+                      [],
+                      Builder.call_expression(
+                        Builder.identifier("convertJSToElixir"),
+                        [Builder.identifier("d"), Builder.identifier("opts")]
+                      ),
+                      false
+                    )
+                  ]
+                )
+              ]
+            )
+          ),
+          nil
+        ),
+        # return data;
+        Builder.return_statement(Builder.identifier("data"))
+      ])
+    )
+
+    # Return list of AST nodes: helper functions + class
+    [
+      convert_elixir_to_js,
+      convert_js_to_elixir,
+      Builder.class_declaration(
+        Builder.identifier("JSON"),
+        Builder.class_body([
+          encode_bang_method,
+          decode_bang_method,
+          encode_internal_method,
+          decode_internal_method
+        ]),
+        nil  # No superclass
       )
     ]
   end
