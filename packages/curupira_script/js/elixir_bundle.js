@@ -1,12 +1,12 @@
 // No runtime imports needed
 
 export default {
-  "Fixtures.Simple": {
+  Simple: {
     hello: function() {
         return 'world';
     }
 },
-  "Fixtures.WithArgs": {
+  WithArgs: {
     greet: function(name) {
         return 'Hello, ' + name + '!';
     }

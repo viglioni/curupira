@@ -94,24 +94,69 @@ defmodule CurupiraScript.Bundler do
   end
 
   defp generate_module_exports(modules) do
-    # Extract module code without import statements
-    module_objects = Enum.map(modules, fn {module, js_code} ->
-      # Strip "Elixir." prefix from module name
-      module_name = strip_elixir_prefix(module)
+    # Build nested structure: MyApp.Site.Module -> {MyApp: {Site: {Module: {...}}}}
+    nested_tree = build_nested_tree(modules)
 
-      # Extract the export default { ... } content
-      module_content = extract_module_content(js_code)
+    # If there's only one top-level key, unwrap it for cleaner access
+    # So {Fixtures: {Simple: {}, WithArgs: {}}} becomes {Simple: {}, WithArgs: {}}
+    unwrapped_tree = case Map.keys(nested_tree) do
+      [single_key] -> Map.get(nested_tree, single_key)
+      _ -> nested_tree
+    end
 
-      # Generate: "Module.Name": { ...functions... }
-      ~s("#{module_name}": #{module_content})
+    # Convert to JavaScript
+    js_tree = tree_to_js(unwrapped_tree, 0)
+
+    """
+    export default #{js_tree};
+    """
+  end
+
+  defp build_nested_tree(modules) do
+    # Build a nested map structure
+    Enum.reduce(modules, %{}, fn {module, js_code}, tree ->
+      # Strip "Elixir." prefix and split into parts
+      parts =
+        module
+        |> strip_elixir_prefix()
+        |> String.split(".")
+
+      # Extract module content
+      content = extract_module_content(js_code)
+
+      # Insert into tree
+      put_in_tree(tree, parts, content)
     end)
+  end
 
-    # Combine all modules into single export
-    """
-    export default {
-      #{Enum.join(module_objects, ",\n  ")}
-    };
-    """
+  defp put_in_tree(tree, [part], content) do
+    # Last part - store the module content
+    Map.put(tree, part, {:module, content})
+  end
+
+  defp put_in_tree(tree, [part | rest], content) do
+    # Intermediate part - recurse
+    subtree = Map.get(tree, part, %{})
+    Map.put(tree, part, put_in_tree(subtree, rest, content))
+  end
+
+  defp tree_to_js(tree, indent_level) do
+    indent = String.duplicate("  ", indent_level)
+    inner_indent = String.duplicate("  ", indent_level + 1)
+
+    entries =
+      Enum.map(tree, fn
+        {key, {:module, content}} ->
+          # Module content - paste directly
+          "#{inner_indent}#{key}: #{content}"
+
+        {key, subtree} when is_map(subtree) ->
+          # Nested namespace
+          nested_js = tree_to_js(subtree, indent_level + 1)
+          "#{inner_indent}#{key}: #{nested_js}"
+      end)
+
+    "{\n#{Enum.join(entries, ",\n")}\n#{indent}}"
   end
 
   defp strip_elixir_prefix(module) do
