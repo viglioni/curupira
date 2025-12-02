@@ -1778,25 +1778,38 @@ defmodule CurupiraJS.Compiler do
     arg_names = for i <- 0..(length(args) - 1), do: "arg#{i}"
     js_params = Enum.map(arg_names, &Builder.identifier/1)
 
+    # Check if this function uses wrappers
+    wrapper = Keyword.get(opts, :wrapper, false)
+
+    # Unwrap arguments if needed (convert {field1, field2, __ref__} -> actual JS object)
+    unwrap_statements = if wrapper do
+      build_unwrap_statements(args, arg_names)
+    else
+      []
+    end
+
     # Get the JavaScript implementation
-    {js_impl, replacements} = get_ffi_js_implementation(opts, arg_names)
+    {js_impl, replacements} = get_ffi_js_implementation(opts, arg_names, wrapper)
 
     # Get return type
     returns = Keyword.get(opts, :returns, :any)
 
     # Wrap implementation with return type transformation
-    wrapped_impl = wrap_ffi_return(js_impl, returns)
+    wrapped_impl = wrap_ffi_return(js_impl, returns, wrapper)
 
     # Check if async
     is_async = Keyword.get(opts, :async, detect_async(opts))
+
+    # Build function body: unwrap args + return wrapped result
+    body_statements = unwrap_statements ++ [
+      Builder.return_statement(wrapped_impl)
+    ]
 
     # Build function expression
     func_expr = Builder.function_expression(
       js_params,
       [],
-      Builder.block_statement([
-        Builder.return_statement(wrapped_impl)
-      ]),
+      Builder.block_statement(body_statements),
       false,  # not generator
       false,  # not expression (handled by return)
       is_async
@@ -1811,7 +1824,15 @@ defmodule CurupiraJS.Compiler do
     {property, replacements}
   end
 
-  defp get_ffi_js_implementation(opts, arg_names) do
+  defp build_unwrap_statements(_args, _arg_names) do
+    # For each argument that's a struct type, we don't unwrap here
+    # Instead, we pass the whole struct and let JS code access fields directly
+    # The JS code can access ctx.width, ctx.__ref__, etc.
+    # So we don't need unwrapping - the struct IS the JS object
+    []
+  end
+
+  defp get_ffi_js_implementation(opts, arg_names, _wrapper) do
     cond do
       # Inline JavaScript
       Keyword.has_key?(opts, :js) ->
@@ -1860,7 +1881,7 @@ defmodule CurupiraJS.Compiler do
     end
   end
 
-  defp wrap_ffi_return(js_impl, return_type) do
+  defp wrap_ffi_return(js_impl, return_type, wrapper) do
     case return_type do
       # :ok - just return :ok atom
       :ok ->
@@ -1870,7 +1891,29 @@ defmodule CurupiraJS.Compiler do
       :any ->
         js_impl
 
+      # Struct type (when wrapper: true and returns is a module/struct)
+      # In this case, we just return the JS object as-is
+      # The struct fields are the JS object fields
+      return_type when wrapper and is_atom(return_type) and return_type != :ok and return_type != :any ->
+        # For wrapped structs, just return the object
+        # The object should have all the struct fields
+        js_impl
+
       # {:ok, _type} - wrap in {:ok, value} tuple
+      {:ok, _inner_type} when wrapper ->
+        # For wrapped types in tuples, still wrap in tuple
+        Builder.array_expression([
+          Builder.call_expression(
+            Builder.member_expression(
+              Builder.identifier("Symbol"),
+              Builder.identifier("for"),
+              false
+            ),
+            [Builder.literal("ok")]
+          ),
+          js_impl
+        ])
+
       {:ok, _inner_type} ->
         # Return [Symbol.for("ok"), result]
         Builder.array_expression([
@@ -1900,133 +1943,22 @@ defmodule CurupiraJS.Compiler do
         ])
 
       # {:result, _type} - check JS object shape for {ok: true/false}
+      {:result, _inner_type} when wrapper ->
+        # Same as regular but inner values are wrapped structs
+        build_result_wrapper(js_impl)
+
       {:result, _inner_type} ->
         # Generate IIFE: (() => { const _r = result; if (_r.ok) return [ok, _r.data]; else return [error, _r.error]; })()
-        Builder.call_expression(
-          Builder.arrow_function_expression(
-            [],  # no params
-            [],  # no defaults
-            Builder.block_statement([
-              # const _result = (js_impl)
-              Builder.variable_declaration(
-                [Builder.variable_declarator(Builder.identifier("_result"), js_impl)],
-                :const
-              ),
-              # if (_result.ok) return [ok, _result.data]; else return [error, _result.error];
-              Builder.if_statement(
-                Builder.member_expression(
-                  Builder.identifier("_result"),
-                  Builder.identifier("ok"),
-                  false
-                ),
-                # then: return [Symbol.for("ok"), _result.data]
-                Builder.return_statement(
-                  Builder.array_expression([
-                    Builder.call_expression(
-                      Builder.member_expression(
-                        Builder.identifier("Symbol"),
-                        Builder.identifier("for"),
-                        false
-                      ),
-                      [Builder.literal("ok")]
-                    ),
-                    Builder.member_expression(
-                      Builder.identifier("_result"),
-                      Builder.identifier("data"),
-                      false
-                    )
-                  ])
-                ),
-                # else: return [Symbol.for("error"), _result.error]
-                Builder.return_statement(
-                  Builder.array_expression([
-                    Builder.call_expression(
-                      Builder.member_expression(
-                        Builder.identifier("Symbol"),
-                        Builder.identifier("for"),
-                        false
-                      ),
-                      [Builder.literal("error")]
-                    ),
-                    Builder.member_expression(
-                      Builder.identifier("_result"),
-                      Builder.identifier("error"),
-                      false
-                    )
-                  ])
-                )
-              )
-            ]),
-            false,  # not generator
-            false,  # not expression
-            false   # not async
-          ),
-          []  # no arguments - it's an IIFE
-        )
+        build_result_wrapper(js_impl)
 
       # {:option, _type} - check for null/undefined
+      {:option, _inner_type} when wrapper ->
+        # Same as regular but inner value is a wrapped struct
+        build_option_wrapper(js_impl)
+
       {:option, _inner_type} ->
         # Generate IIFE: (() => { const _r = result; if (_r != null) return [ok, _r]; else return [error, not_found]; })()
-        Builder.call_expression(
-          Builder.arrow_function_expression(
-            [],  # no params
-            [],  # no defaults
-            Builder.block_statement([
-              # const _result = (js_impl)
-              Builder.variable_declaration(
-                [Builder.variable_declarator(Builder.identifier("_result"), js_impl)],
-                :const
-              ),
-              # if (_result != null) return [ok, _result]; else return [error, not_found];
-              Builder.if_statement(
-                Builder.binary_expression(
-                  :"!=",
-                  Builder.identifier("_result"),
-                  Builder.literal(nil)
-                ),
-                # then: return [Symbol.for("ok"), _result]
-                Builder.return_statement(
-                  Builder.array_expression([
-                    Builder.call_expression(
-                      Builder.member_expression(
-                        Builder.identifier("Symbol"),
-                        Builder.identifier("for"),
-                        false
-                      ),
-                      [Builder.literal("ok")]
-                    ),
-                    Builder.identifier("_result")
-                  ])
-                ),
-                # else: return [Symbol.for("error"), Symbol.for("not_found")]
-                Builder.return_statement(
-                  Builder.array_expression([
-                    Builder.call_expression(
-                      Builder.member_expression(
-                        Builder.identifier("Symbol"),
-                        Builder.identifier("for"),
-                        false
-                      ),
-                      [Builder.literal("error")]
-                    ),
-                    Builder.call_expression(
-                      Builder.member_expression(
-                        Builder.identifier("Symbol"),
-                        Builder.identifier("for"),
-                        false
-                      ),
-                      [Builder.literal("not_found")]
-                    )
-                  ])
-                )
-              )
-            ]),
-            false,  # not generator
-            false,  # not expression
-            false   # not async
-          ),
-          []  # no arguments - it's an IIFE
-        )
+        build_option_wrapper(js_impl)
 
       # Other types - return as-is for now
       _ ->
@@ -2042,5 +1974,134 @@ defmodule CurupiraJS.Compiler do
     else
       false
     end
+  end
+
+  defp build_result_wrapper(js_impl) do
+    # Generate IIFE: (() => { const _r = result; if (_r.ok) return [ok, _r.data]; else return [error, _r.error]; })()
+    Builder.call_expression(
+      Builder.arrow_function_expression(
+        [],  # no params
+        [],  # no defaults
+        Builder.block_statement([
+          # const _result = (js_impl)
+          Builder.variable_declaration(
+            [Builder.variable_declarator(Builder.identifier("_result"), js_impl)],
+            :const
+          ),
+          # if (_result.ok) return [ok, _result.data]; else return [error, _result.error];
+          Builder.if_statement(
+            Builder.member_expression(
+              Builder.identifier("_result"),
+              Builder.identifier("ok"),
+              false
+            ),
+            # then: return [Symbol.for("ok"), _result.data]
+            Builder.return_statement(
+              Builder.array_expression([
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("Symbol"),
+                    Builder.identifier("for"),
+                    false
+                  ),
+                  [Builder.literal("ok")]
+                ),
+                Builder.member_expression(
+                  Builder.identifier("_result"),
+                  Builder.identifier("data"),
+                  false
+                )
+              ])
+            ),
+            # else: return [Symbol.for("error"), _result.error]
+            Builder.return_statement(
+              Builder.array_expression([
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("Symbol"),
+                    Builder.identifier("for"),
+                    false
+                  ),
+                  [Builder.literal("error")]
+                ),
+                Builder.member_expression(
+                  Builder.identifier("_result"),
+                  Builder.identifier("error"),
+                  false
+                )
+              ])
+            )
+          )
+        ]),
+        false,  # not generator
+        false,  # not expression
+        false   # not async
+      ),
+      []  # no arguments - it's an IIFE
+    )
+  end
+
+  defp build_option_wrapper(js_impl) do
+    # Generate IIFE: (() => { const _r = result; if (_r != null) return [ok, _r]; else return [error, not_found]; })()
+    Builder.call_expression(
+      Builder.arrow_function_expression(
+        [],  # no params
+        [],  # no defaults
+        Builder.block_statement([
+          # const _result = (js_impl)
+          Builder.variable_declaration(
+            [Builder.variable_declarator(Builder.identifier("_result"), js_impl)],
+            :const
+          ),
+          # if (_result != null) return [ok, _result]; else return [error, not_found];
+          Builder.if_statement(
+            Builder.binary_expression(
+              :"!=",
+              Builder.identifier("_result"),
+              Builder.literal(nil)
+            ),
+            # then: return [Symbol.for("ok"), _result]
+            Builder.return_statement(
+              Builder.array_expression([
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("Symbol"),
+                    Builder.identifier("for"),
+                    false
+                  ),
+                  [Builder.literal("ok")]
+                ),
+                Builder.identifier("_result")
+              ])
+            ),
+            # else: return [Symbol.for("error"), Symbol.for("not_found")]
+            Builder.return_statement(
+              Builder.array_expression([
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("Symbol"),
+                    Builder.identifier("for"),
+                    false
+                  ),
+                  [Builder.literal("error")]
+                ),
+                Builder.call_expression(
+                  Builder.member_expression(
+                    Builder.identifier("Symbol"),
+                    Builder.identifier("for"),
+                    false
+                  ),
+                  [Builder.literal("not_found")]
+                )
+              ])
+            )
+          )
+        ]),
+        false,  # not generator
+        false,  # not expression
+        false   # not async
+      ),
+      []  # no arguments - it's an IIFE
+    )
   end
 end
