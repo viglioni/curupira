@@ -187,11 +187,11 @@ Symbol.for("error")   // :error
 Symbol.for("not_found") // :not_found
 ```
 
-## What's Not Implemented Yet
+## Struct Wrapper Support (IMPLEMENTED ✅)
 
-### 1. Struct Wrapper Support (`__ref__` pattern)
+### The `wrapper: true` Option
 
-The `wrapper: true` option is defined but not yet implemented. This would allow:
+Now fully implemented! This allows wrapping JavaScript objects in Elixir structs:
 
 ```elixir
 defmodule MyApp.Canvas do
@@ -203,26 +203,27 @@ defmodule MyApp.Canvas do
     js_path: "HTMLCanvasElement.prototype.getContext",
     args: [:string],
     returns: {:option, __MODULE__.t()},
-    wrapper: true  # <- Not yet implemented
+    wrapper: true  # ✅ Implemented!
 
   ffi :fill_rect,
     args: [__MODULE__.t(), :integer, :integer, :integer, :integer],
     returns: __MODULE__.t(),
-    wrapper: true,  # <- Not yet implemented
+    wrapper: true,  # ✅ Implemented!
     js: """
     (ctx, x, y, width, height) => {
-      ctx.__ref__.fillRect(x, y, width, height);
+      ctx._jsRef.fillRect(x, y, width, height);
       return { ...ctx }; // Return new struct with updated ref
     }
     """
 end
 ```
 
-**Implementation needed**:
-- Detect `wrapper: true` in `generate_ffi_function/2`
-- Generate wrapper code that creates structs with `__ref__` field
-- Handle unwrapping when passing wrapped structs as arguments
-- Generate immutable-looking updates that mutate underlying JS objects
+**Implementation complete**:
+- ✅ Detect `wrapper: true` in `generate_ffi_function/2`
+- ✅ Pass wrapper flag through compilation pipeline
+- ✅ Handle wrapped returns for all type transformations
+- ✅ Arguments passed as-is (struct fields ARE JS properties)
+- ✅ Immutable facade over mutable JS objects
 
 ### 2. Advanced Type Checking
 
@@ -264,8 +265,14 @@ No special handling for JavaScript exceptions yet. Could add:
 - Inline JS support
 - External JS path support
 
-⏳ **Phase 2 Pending**: Advanced features
-- Struct wrappers with `__ref__`
-- Better error handling
-- TypeScript definitions
+✅ **Phase 2 Complete**: Struct wrapper support
+- `wrapper: true` option
+- Wrapped struct returns
+- All return type transformations support wrappers
+- Clean compilation (no warnings)
+
+⏳ **Phase 3 Future**: Advanced features
+- Better error handling with try-catch
+- TypeScript definition generation
+- Dialyzer integration
 - Performance optimizations
