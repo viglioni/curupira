@@ -23,8 +23,6 @@ defmodule CurupiraWeb.DOM do
 
   use CurupiraJS.FFI
 
-  alias CurupiraWeb.DOM.Element
-
   # ===========================
   # DOM Query Methods
   # ===========================
@@ -42,7 +40,7 @@ defmodule CurupiraWeb.DOM do
   """
   ffi :query_selector,
     args: [:string],
-    returns: {:option, Element.t()},
+    returns: {:option, :any},
     wrapper: true,
     js: """
     (selector) => {
@@ -100,7 +98,7 @@ defmodule CurupiraWeb.DOM do
   """
   ffi :get_by_id,
     args: [:string],
-    returns: {:option, Element.t()},
+    returns: {:option, :any},
     wrapper: true,
     js: """
     (id) => {
@@ -134,7 +132,7 @@ defmodule CurupiraWeb.DOM do
   """
   ffi :create_element,
     args: [:string],
-    returns: {:ok, Element.t()},
+    returns: {:ok, :any},
     wrapper: true,
     js: """
     (tagName) => {
@@ -165,8 +163,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.set_inner_html(element, "<p>Hello</p>")
   """
   ffi :set_inner_html,
-    args: [Element.t(), :string],
-    returns: Element.t(),
+    args: [:any, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, html) => {
@@ -185,8 +183,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.set_inner_text(element, "Hello, World!")
   """
   ffi :set_inner_text,
-    args: [Element.t(), :string],
-    returns: Element.t(),
+    args: [:any, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, text) => {
@@ -206,8 +204,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.set_attribute(element, "class", "btn btn-primary")
   """
   ffi :set_attribute,
-    args: [Element.t(), :string, :string],
-    returns: Element.t(),
+    args: [:any, :string, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, name, value) => {
@@ -230,7 +228,7 @@ defmodule CurupiraWeb.DOM do
       {:error, :not_found} = DOM.get_attribute(element, "nonexistent")
   """
   ffi :get_attribute,
-    args: [Element.t(), :string],
+    args: [:any, :string],
     returns: {:option, :string},
     wrapper: true,
     js: """
@@ -249,8 +247,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.add_class(element, "active")
   """
   ffi :add_class,
-    args: [Element.t(), :string],
-    returns: Element.t(),
+    args: [:any, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, className) => {
@@ -269,8 +267,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.remove_class(element, "active")
   """
   ffi :remove_class,
-    args: [Element.t(), :string],
-    returns: Element.t(),
+    args: [:any, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, className) => {
@@ -289,8 +287,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.toggle_class(element, "active")
   """
   ffi :toggle_class,
-    args: [Element.t(), :string],
-    returns: Element.t(),
+    args: [:any, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, className) => {
@@ -313,8 +311,8 @@ defmodule CurupiraWeb.DOM do
       parent = DOM.append_child(parent, child)
   """
   ffi :append_child,
-    args: [Element.t(), Element.t()],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (parent, child) => {
@@ -333,8 +331,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.remove(element)
   """
   ffi :remove,
-    args: [Element.t()],
-    returns: Element.t(),
+    args: [:any],
+    returns: :any,
     wrapper: true,
     js: """
     (element) => {
@@ -353,8 +351,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.append_below(element, new_element)
   """
   ffi :append_below,
-    args: [Element.t(), Element.t()],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (referenceElement, newElement) => {
@@ -376,7 +374,7 @@ defmodule CurupiraWeb.DOM do
       children = DOM.get_children(parent)
   """
   ffi :get_children,
-    args: [Element.t()],
+    args: [:any],
     returns: :any,  # Returns array of elements
     wrapper: true,
     js: """
@@ -440,8 +438,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.set_style(element, "backgroundColor", "blue")
   """
   ffi :set_style,
-    args: [Element.t(), :string, :string],
-    returns: Element.t(),
+    args: [:any, :string, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, property, value) => {
@@ -463,8 +461,8 @@ defmodule CurupiraWeb.DOM do
       # In generated JS: setStyles(element, {color: "red", fontSize: "16px"})
   """
   ffi :set_styles,
-    args: [Element.t(), :any],  # :any for JS object
-    returns: Element.t(),
+    args: [:any, :any],  # :any for JS object
+    returns: :any,
     wrapper: true,
     js: """
     (element, styles) => {
@@ -488,8 +486,8 @@ defmodule CurupiraWeb.DOM do
       # Sets data-user-id="123"
   """
   ffi :set_dataset,
-    args: [Element.t(), :string, :string],
-    returns: Element.t(),
+    args: [:any, :string, :string],
+    returns: :any,
     wrapper: true,
     js: """
     (element, key, value) => {
@@ -508,7 +506,7 @@ defmodule CurupiraWeb.DOM do
       {:ok, "123"} = DOM.get_dataset(element, "userId")
   """
   ffi :get_dataset,
-    args: [Element.t(), :string],
+    args: [:any, :string],
     returns: {:option, :string},
     wrapper: true,
     js: """
@@ -533,7 +531,7 @@ defmodule CurupiraWeb.DOM do
   """
   ffi :get_checkbox_by_id,
     args: [:string],
-    returns: {:option, Element.t()},
+    returns: {:option, :any},
     wrapper: true,
     js: """
     (id) => {
@@ -597,7 +595,7 @@ defmodule CurupiraWeb.DOM do
       :ok = DOM.scroll_to(element)
   """
   ffi :scroll_to,
-    args: [Element.t()],
+    args: [:any],
     returns: :ok,
     wrapper: true,
     js: """
@@ -624,8 +622,8 @@ defmodule CurupiraWeb.DOM do
       editInnerHtmlWithFn(element, (html) => html.toUpperCase())
   """
   ffi :edit_inner_html_with_fn,
-    args: [Element.t(), :any],  # element, function
-    returns: Element.t(),
+    args: [:any, :any],  # element, function
+    returns: :any,
     wrapper: true,
     js: """
     (element, fn) => {
@@ -653,7 +651,7 @@ defmodule CurupiraWeb.DOM do
       true = DOM.has_class?(element, "active")
   """
   ffi :has_class?,
-    args: [Element.t(), :string],
+    args: [:any, :string],
     returns: :any,  # boolean
     wrapper: true,
     js: """
@@ -672,7 +670,7 @@ defmodule CurupiraWeb.DOM do
       ["btn", "btn-primary", "active"] = DOM.get_class_list(element)
   """
   ffi :get_class_list,
-    args: [Element.t()],
+    args: [:any],
     returns: :any,  # array of strings
     wrapper: true,
     js: """
@@ -693,8 +691,8 @@ defmodule CurupiraWeb.DOM do
       addClasses(element, ["btn", "btn-primary", "active"])
   """
   ffi :add_classes,
-    args: [Element.t(), :any],  # element, array of strings
-    returns: Element.t(),
+    args: [:any, :any],  # element, array of strings
+    returns: :any,
     wrapper: true,
     js: """
     (element, classNames) => {
@@ -713,7 +711,7 @@ defmodule CurupiraWeb.DOM do
       :ok = DOM.focus(input_element)
   """
   ffi :focus,
-    args: [Element.t()],
+    args: [:any],
     returns: :ok,
     wrapper: true,
     js: """
@@ -733,7 +731,7 @@ defmodule CurupiraWeb.DOM do
       :ok = DOM.blur(input_element)
   """
   ffi :blur,
-    args: [Element.t()],
+    args: [:any],
     returns: :ok,
     wrapper: true,
     js: """
@@ -774,8 +772,8 @@ defmodule CurupiraWeb.DOM do
       })
   """
   ffi :add_event_listener,
-    args: [Element.t(), :string, :any],  # element, event_name, handler_function
-    returns: Element.t(),
+    args: [:any, :string, :any],  # element, event_name, handler_function
+    returns: :any,
     wrapper: true,
     js: """
     (element, eventName, handler) => {
@@ -796,8 +794,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.remove_event_listener(element, "click", handler)
   """
   ffi :remove_event_listener,
-    args: [Element.t(), :string, :any],  # element, event_name, handler_function
-    returns: Element.t(),
+    args: [:any, :string, :any],  # element, event_name, handler_function
+    returns: :any,
     wrapper: true,
     js: """
     (element, eventName, handler) => {
@@ -818,8 +816,8 @@ defmodule CurupiraWeb.DOM do
       element = DOM.on_click(button, handler)
   """
   ffi :on_click,
-    args: [Element.t(), :any],  # element, handler
-    returns: Element.t(),
+    args: [:any, :any],  # element, handler
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -840,8 +838,8 @@ defmodule CurupiraWeb.DOM do
       input = DOM.on_change(input, handler)
   """
   ffi :on_change,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -862,8 +860,8 @@ defmodule CurupiraWeb.DOM do
       input = DOM.on_input(input, handler)
   """
   ffi :on_input,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -882,8 +880,8 @@ defmodule CurupiraWeb.DOM do
       form = DOM.on_submit(form, handler)
   """
   ffi :on_submit,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -902,8 +900,8 @@ defmodule CurupiraWeb.DOM do
       input = DOM.on_keydown(input, handler)
   """
   ffi :on_keydown,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -922,8 +920,8 @@ defmodule CurupiraWeb.DOM do
       input = DOM.on_keyup(input, handler)
   """
   ffi :on_keyup,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -944,8 +942,8 @@ defmodule CurupiraWeb.DOM do
       div = DOM.on_mouseenter(div, handler)
   """
   ffi :on_mouseenter,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -966,8 +964,8 @@ defmodule CurupiraWeb.DOM do
       div = DOM.on_mouseleave(div, handler)
   """
   ffi :on_mouseleave,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -986,8 +984,8 @@ defmodule CurupiraWeb.DOM do
       input = DOM.on_focus(input, handler)
   """
   ffi :on_focus,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
@@ -1006,8 +1004,8 @@ defmodule CurupiraWeb.DOM do
       input = DOM.on_blur(input, handler)
   """
   ffi :on_blur,
-    args: [Element.t(), :any],
-    returns: Element.t(),
+    args: [:any, :any],
+    returns: :any,
     wrapper: true,
     js: """
     (element, handler) => {
