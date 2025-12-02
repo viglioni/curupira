@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CurupiraWeb Event Handling Example</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #6366f1;
+      padding-bottom: 10px;
+    }
+
+    .example {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .example h2 {
+      margin-top: 0;
+      color: #4f46e5;
+      font-size: 1.2em;
+    }
+
+    input, button {
+      padding: 10px 15px;
+      font-size: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      margin: 5px 0;
+    }
+
+    button {
+      background: #6366f1;
+      color: white;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #4f46e5;
+    }
+
+    input:focus {
+      outline: 2px solid #6366f1;
+      border-color: #6366f1;
+    }
+
+    .output {
+      margin-top: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 4px;
+      min-height: 20px;
+    }
+
+    .error {
+      color: #dc2626;
+      font-size: 0.875em;
+      display: block;
+      margin-top: 5px;
+    }
+
+    .invalid {
+      border-color: #dc2626;
+    }
+
+    .box {
+      padding: 20px;
+      background: #e0e7ff;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .box.hovered {
+      background: #6366f1;
+      color: white;
+      transform: scale(1.05);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    code {
+      background: #1f2937;
+      color: #10b981;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>CurupiraWeb Event Handling Examples</h1>
+
+  <p>
+    These examples demonstrate event handling compiled from Elixir to JavaScript
+    using <code>CurupiraWeb</code>.
+  </p>
+
+  <!-- Click Counter Example -->
+  <div class="example">
+    <h2>1. Click Counter</h2>
+    <p>Click the button to increment the counter.</p>
+    <button id="click-counter">Clicks: 0</button>
+  </div>
+
+  <!-- Input Logger Example -->
+  <div class="example">
+    <h2>2. Input Logger</h2>
+    <p>Type your name to see it reflected below.</p>
+    <input id="name-input" type="text" placeholder="Enter your name">
+    <div class="output" id="name-output"></div>
+  </div>
+
+  <!-- Form Handler Example -->
+  <div class="example">
+    <h2>3. Form Submission</h2>
+    <p>Submit the form to see preventDefault in action.</p>
+    <form id="contact-form">
+      <input type="email" id="email" name="email" placeholder="your@email.com" required>
+      <button type="submit">Submit</button>
+    </form>
+    <div class="output" id="form-message"></div>
+  </div>
+
+  <!-- Keyboard Handler Example -->
+  <div class="example">
+    <h2>4. Keyboard Events</h2>
+    <p>Press <code>Ctrl+Enter</code> to submit your search query.</p>
+    <input id="search-box" type="text" placeholder="Search (Ctrl+Enter to submit)">
+  </div>
+
+  <!-- Hover Effect Example -->
+  <div class="example">
+    <h2>5. Mouse Hover</h2>
+    <p>Hover over the box to see the effect.</p>
+    <div id="hover-box" class="box">Hover over me!</div>
+  </div>
+
+  <!-- Validation Example -->
+  <div class="example">
+    <h2>6. Focus/Blur Validation</h2>
+    <p>Enter a username (min 3 characters). Validation happens on blur.</p>
+    <input id="username" type="text" placeholder="Username" required>
+    <span id="username-error" class="error"></span>
+  </div>
+
+  <!-- Load the compiled JavaScript -->
+  <!--
+    To use this example:
+    1. Compile the Elixir code:
+       mix curupira_js.build --input CurupiraWeb.Examples.EventExample --output examples/event_example.js
+    2. Uncomment the script tags below
+    3. Open this HTML file in a browser
+  -->
+  <!--
+  <script src="event_example.js"></script>
+  <script>
+    // Initialize the examples
+    CurupiraWeb.Examples.EventExample.main();
+  </script>
+  -->
+
+  <div style="margin-top: 40px; padding: 20px; background: #fef3c7; border-radius: 8px;">
+    <h3>⚠️ To run this example:</h3>
+    <ol>
+      <li>Compile the Elixir code to JavaScript</li>
+      <li>Uncomment the script tags above</li>
+      <li>Open this HTML file in a browser</li>
+    </ol>
+    <p>
+      <strong>Compile command:</strong><br>
+      <code>mix curupira_js.build --input CurupiraWeb.Examples.EventExample --output examples/event_example.js</code>
+    </p>
+  </div>
+</body>
+</html>
