@@ -742,4 +742,376 @@ defmodule CurupiraWeb.DOM do
       return Symbol.for('ok');
     }
     """
+
+  # ===========================
+  # Event Handling
+  # ===========================
+
+  @doc """
+  Add an event listener to an element.
+
+  The handler should be a JavaScript function that accepts an event parameter.
+  In compiled Elixir code, this will be an Elixir function that gets compiled to JS.
+
+  Returns the element.
+
+  ## Example (in compiled Elixir code)
+
+      # Define handler function
+      def handle_click(event) do
+        # event is a JS event object
+        # In real usage, you'd interact with it via FFI
+        :ok
+      end
+
+      # Register the handler (this compiles to JS)
+      element = DOM.add_event_listener(element, "click", &handle_click/1)
+
+  ## Example (direct in generated JS)
+
+      addEventListener(element, "click", (event) => {
+        console.log("Clicked!", event);
+      })
+  """
+  ffi :add_event_listener,
+    args: [Element.t(), :string, :any],  # element, event_name, handler_function
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, eventName, handler) => {
+      element.__ref__.addEventListener(eventName, handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Remove an event listener from an element.
+
+  The handler must be the same function reference that was passed to add_event_listener.
+
+  Returns the element.
+
+  ## Example
+
+      element = DOM.remove_event_listener(element, "click", handler)
+  """
+  ffi :remove_event_listener,
+    args: [Element.t(), :string, :any],  # element, event_name, handler_function
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, eventName, handler) => {
+      element.__ref__.removeEventListener(eventName, handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a click event listener to an element.
+
+  Convenience wrapper around add_event_listener for click events.
+
+  Returns the element.
+
+  ## Example
+
+      element = DOM.on_click(button, handler)
+  """
+  ffi :on_click,
+    args: [Element.t(), :any],  # element, handler
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('click', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a change event listener to an element.
+
+  Typically used for inputs, selects, and textareas.
+
+  Returns the element.
+
+  ## Example
+
+      input = DOM.on_change(input, handler)
+  """
+  ffi :on_change,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('change', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add an input event listener to an element.
+
+  Fires on every keystroke/input change.
+
+  Returns the element.
+
+  ## Example
+
+      input = DOM.on_input(input, handler)
+  """
+  ffi :on_input,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('input', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a submit event listener to a form.
+
+  Returns the element.
+
+  ## Example
+
+      form = DOM.on_submit(form, handler)
+  """
+  ffi :on_submit,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('submit', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a keydown event listener to an element.
+
+  Returns the element.
+
+  ## Example
+
+      input = DOM.on_keydown(input, handler)
+  """
+  ffi :on_keydown,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('keydown', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a keyup event listener to an element.
+
+  Returns the element.
+
+  ## Example
+
+      input = DOM.on_keyup(input, handler)
+  """
+  ffi :on_keyup,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('keyup', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a mouseenter event listener to an element.
+
+  Fires when the mouse enters the element.
+
+  Returns the element.
+
+  ## Example
+
+      div = DOM.on_mouseenter(div, handler)
+  """
+  ffi :on_mouseenter,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('mouseenter', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a mouseleave event listener to an element.
+
+  Fires when the mouse leaves the element.
+
+  Returns the element.
+
+  ## Example
+
+      div = DOM.on_mouseleave(div, handler)
+  """
+  ffi :on_mouseleave,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('mouseleave', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a focus event listener to an element.
+
+  Returns the element.
+
+  ## Example
+
+      input = DOM.on_focus(input, handler)
+  """
+  ffi :on_focus,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('focus', handler);
+      return element;
+    }
+    """
+
+  @doc """
+  Add a blur event listener to an element.
+
+  Returns the element.
+
+  ## Example
+
+      input = DOM.on_blur(input, handler)
+  """
+  ffi :on_blur,
+    args: [Element.t(), :any],
+    returns: Element.t(),
+    wrapper: true,
+    js: """
+    (element, handler) => {
+      element.__ref__.addEventListener('blur', handler);
+      return element;
+    }
+    """
+
+  # ===========================
+  # Event Utilities
+  # ===========================
+
+  @doc """
+  Prevent the default action of an event.
+
+  Call this within an event handler to prevent default behavior
+  (e.g., prevent form submission, prevent link navigation).
+
+  Returns `:ok`.
+
+  ## Example (in JS)
+
+      on_click(button, (event) => {
+        preventDefault(event);
+        // Handle click without default action
+      })
+  """
+  ffi :prevent_default,
+    args: [:any],  # event object
+    returns: :ok,
+    js: """
+    (event) => {
+      event.preventDefault();
+      return Symbol.for('ok');
+    }
+    """
+
+  @doc """
+  Stop event propagation (bubbling).
+
+  Prevents the event from bubbling up to parent elements.
+
+  Returns `:ok`.
+
+  ## Example
+
+      on_click(child, (event) => {
+        stopPropagation(event);
+        // Event won't bubble to parent
+      })
+  """
+  ffi :stop_propagation,
+    args: [:any],
+    returns: :ok,
+    js: """
+    (event) => {
+      event.stopPropagation();
+      return Symbol.for('ok');
+    }
+    """
+
+  @doc """
+  Get the value from an event target.
+
+  Useful for getting input values in change/input handlers.
+
+  Returns `{:ok, value}` if the target has a value, `{:error, :not_found}` otherwise.
+
+  ## Example
+
+      on_change(input, (event) => {
+        const value = getEventValue(event);
+        // Use value...
+      })
+  """
+  ffi :get_event_value,
+    args: [:any],  # event object
+    returns: {:option, :string},
+    js: """
+    (event) => {
+      return event.target?.value || null;
+    }
+    """
+
+  @doc """
+  Get the checked state from an event target.
+
+  Useful for checkbox/radio change handlers.
+
+  Returns the checked boolean.
+
+  ## Example
+
+      on_change(checkbox, (event) => {
+        const checked = getEventChecked(event);
+        // Use checked state...
+      })
+  """
+  ffi :get_event_checked,
+    args: [:any],
+    returns: :any,  # boolean
+    js: """
+    (event) => {
+      return event.target?.checked || false;
+    }
+    """
 end
