@@ -1,436 +1,386 @@
 #+title: Curupira Quick Reference
-#+author: Curupira Team
-#+date: 2025-11-27
+#+date: 2025-12-02
+#+startup: content
 
-* Quick Reference for Claude Code
+* 🎯 Current Status
 
-This is a cheat sheet for common tasks and questions.
+** Project Status: ✅ PRODUCTION READY
 
-** Reading This Context
+All three packages complete and tested!
 
-When starting a new Claude Code session:
+** Version Info
 
-1. Read =claude.md= first (comprehensive overview)
-2. Skim =design.org= (technical details)
-3. Check =decisions.org= as needed (why we chose things)
-4. Use this file for quick lookups
+| Package | Version | Status | Tests |
+|---------+---------+--------+-------|
+| curupira_js (curupira_script) | 0.33.0-dev | ✅ Complete | 88/88 (100%) |
+| curupira_web | 0.1.0 | ✅ Complete | 13/13 (100%) |
+| curupira_template | 0.1.0 | ✅ Updated | Ready |
 
-** Current Status (2025-11-27)
+** What We Built
 
-- Phase: *Phase 0 - Architecture Study*
-- Next Task: *Clone ElixirScript as reference, begin documentation*
-- Strategy: *Study deeply → Build fresh (hybrid approach)*
-- Working Packages: =curupira_template= ✅
-- In Development: =curupira_script= 🚧
-- Planned: =curupira_web= ⏳
+Built from scratch (not a fork):
+- ✅ Complete Elixir →  JavaScript compiler
+- ✅ All Phase 1-3 features (88/88 tests)
+- ✅ FFI system for JavaScript interop
+- ✅ DOM manipulation (35+ functions)
+- ✅ Event handling (12 handlers)
+- ✅ HTTP client, JSON, source maps
+- ✅ Mix compiler & bundler
+- ✅ Ready-to-use template
 
-** Repository Layout
+* 🚀 Quick Commands
 
-#+begin_example
-curupira/
-├── packages/
-│   ├── curupira_script/     ← PRIORITY: Fork ElixirScript here
-│   ├── curupira_web/        ← Not started
-│   └── curupira_template/   ← Working (uses old ElixirScript)
-├── examples/                 ← Example apps (to create)
-├── docs/                     ← Documentation
-└── .llm/                     ← Claude context (this dir)
-#+end_example
-
-** Package Versions
-
-| Package | Version | Status | Purpose |
-|---------+---------+--------+---------|
-| curupira_script | 0.33.0-dev | 🚧 Planning | Elixir → JS transpiler |
-| curupira_web | 0.3.0-dev | ⏳ Planned | Browser/Web APIs |
-| curupira_template | 1.0.0 | ✅ Working | Mix template generator |
-
-** Git Tags
-
-Format: =<package>-v<version>=
-
-Examples:
-- =curupira_script-v0.33.0=
-- =curupira_web-v0.3.0=
-- =curupira_template-v1.0.0=
-
-** Important Decisions (TL;DR)
-
-| Decision | Choice | Why |
-|----------+--------+-----|
-| *Approach* | *Study → Build Fresh* | *Deep understanding + clean code* |
-| What to Steal | Tailored, types, tests | Don't reinvent hard parts |
-| What to Build | Compiler, runtime | Modern Elixir patterns |
-| Output | ES Modules only | Modern standard, simpler |
-| AST | BEAM debug_info | Macros pre-expanded |
-| Patterns | Runtime library | Easier to implement correctly |
-| Atoms | Symbol.for() | Perfect semantic match |
-| OTP | Not supported | Reduces scope, not needed client-side |
-| Coverage | ~30% stdlib | Pragmatic, achievable |
-
-See =decisions.org= for full rationale.
-
-** Elixir Version Support
-
-| Elixir Version | Supported | Notes |
-|----------------+-----------+-------|
-| 1.6 - 1.16 | ❌ No | Too old |
-| 1.17+ | ✅ Yes | Minimum version |
-| 1.18 | ✅ Yes | JSON module support |
-| 1.19 | ✅ Yes | Latest features |
-
-** Key File Locations
-
-*** When Forked
-
-After we fork ElixirScript, key files will be:
-
-Compiler:
-- =packages/curupira_script/lib/curupira_script.ex= - Main API
-- =packages/curupira_script/lib/compiler.ex= - Compiler orchestration
-- =packages/curupira_script/lib/passes/translate/= - AST translation
-
-Runtime:
-- =packages/curupira_script/priv/javascript/lib/core.js= - Kernel functions
-- =packages/curupira_script/priv/javascript/lib/enum.js= - Enum module
-- =packages/curupira_script/priv/javascript/lib/types.js= - Data types
-
-Tests:
-- =packages/curupira_script/test/= - Elixir tests
-- =packages/curupira_script/priv/javascript/tests/= - JS runtime tests
-
-*** Currently
-
-Template:
-- =packages/curupira_template/lib/curupira.ex= - Template definition
-- =packages/curupira_template/template/$PROJECT_NAME$/= - Template files
-
-** Common Commands
-
-*** Development
+** curupira_js (packages/curupira_script)
 
 #+begin_src shell
-# Work on curupira_script (when we have it)
 cd packages/curupira_script
-mix deps.get
+
+# Run all tests
 mix test
 
-# Work on curupira_template
-cd packages/curupira_template
-mix deps.get
-mix template.install
-
-# Test the template
-cd /tmp
-mix gen curupira test_app
-cd test_app
-mix deps.get && npm install
-mix watch.compile
-#+end_src
-
-*** Testing
-
-#+begin_src shell
-# Elixir tests
-mix test
-
-# JavaScript runtime tests (when available)
-cd priv/javascript
-npm test
-
-# Integration test
-mix test --only integration
-#+end_src
-
-*** Publishing
-
-#+begin_src shell
-# Publish curupira_script
-cd packages/curupira_script
-mix hex.publish
-
-# Tag it
-git tag curupira_script-v0.33.0
-git push origin curupira_script-v0.33.0
-#+end_src
-
-** Phase Checklist
-
-*** Phase 0: Architecture Study ⏳ IN PROGRESS
-
-- [ ] Clone ElixirScript as reference (=packages/curupira_script/reference/=)
-- [ ] Document BEAM AST extraction
-- [ ] Document translation pipeline
-- [ ] Document pattern matching (Tailored)
-- [ ] Document hard problems & solutions
-- [ ] Map modern Elixir features to implementation
-- [ ] Create implementation plan
-
-See [[file:todo.org][todo.org]] for detailed task tracking.
-
-*** Phase 1: Greenfield Build
-
-- [ ] Setup fresh project structure
-- [ ] Implement core compiler pipeline
-- [ ] Integrate Tailored (pattern matching)
-- [ ] Implement basic runtime
-- [ ] Setup testing infrastructure
-
-*** Phase 1: Modern Elixir
-
-- [ ] Stepped ranges (=1..10//2=)
-- [ ] =then/2= and =tap/2=
-- [ ] =is_non_struct_map/1= guard
-- [ ] Duration type
-
-*** Phase 2: Stdlib
-
-- [ ] More Enum functions
-- [ ] JSON module
-- [ ] More String functions
-- [ ] More Map functions
-
-*** Phase 3: DX
-
-- [ ] Better errors
-- [ ] Source maps
-- [ ] Incremental compilation
-- [ ] Fast watch mode
-
-** What's Supported (Target)
-
-*** Data Types ✅
-
-- Integers, floats
-- Strings (binaries)
-- Atoms
-- Lists
-- Maps
-- Tuples
-- Structs
-
-*** Language Features ✅
-
-- Modules (=defmodule=)
-- Functions (=def=, =defp=)
-- Pattern matching
-- Guards
-- Pipe operator (=|>=)
-- Control flow (=if=, =case=, =cond=, =with=)
-- Comprehensions (=for=)
-- Try/rescue/catch
-- Protocols (basic)
-
-*** Not Supported ❌
-
-- GenServer, Supervisor, Task
-- spawn, send, receive
-- Most OTP constructs
-- Macros (use pre-expanded AST)
-- Some stdlib functions
-
-** Common Questions
-
-*** Q: Can I use this in production?
-
-A: Not yet! Wait for =curupira_script= v0.33.0 (Q1 2025).
-
-The template works but uses old ElixirScript (2018).
-
-*** Q: Why not Phoenix LiveView?
-
-A: LiveView is server-rendered. Curupira is for client-side SPAs.
-
-Different use cases!
-
-*** Q: Will it support React/Vue?
-
-A: Not built-in, but you can integrate.
-
-We'll provide examples later.
-
-*** Q: What about OTP?
-
-A: No GenServer/Supervisor. Too complex, not needed for client-side.
-
-Basic Agent support only (synchronous, no real processes).
-
-*** Q: Can I share code with my backend?
-
-A: Yes, if it doesn't use:
-- OTP (GenServer, etc.)
-- Unsupported stdlib functions
-- receive/spawn
-
-Common business logic works fine.
-
-*** Q: How big will the bundle be?
-
-A: TBD. Depends on what you use.
-
-ElixirScript runtime was ~100KB (before minification).
-With tree-shaking, could be much smaller.
-
-** Performance Expectations
-
-*** Compilation Speed
-
-Target: < 5 seconds for medium projects (50 modules)
-
-ElixirScript was slower. We'll improve with:
-- Better caching
-- Incremental compilation
-- Parallel processing
-
-*** Runtime Speed
-
-JavaScript is slower than BEAM for:
-- Recursion (no tail-call optimization)
-- Pattern matching (runtime library overhead)
-- Large data structures (immutability overhead)
-
-But fine for typical client-side work.
-
-*** Bundle Size
-
-Depends on usage. With tree-shaking:
-- Small app (~10 modules): ~50KB runtime + code
-- Medium app (~50 modules): ~100KB runtime + code
-- Large app (~100+ modules): ~200KB+ runtime + code
-
-These are estimates. Will measure after implementation.
-
-** Code Style
-
-*** Elixir
-
-Follow standard Elixir style:
-- 2-space indentation
-- Use =mix format=
-- Follow [[https://github.com/christopheradams/elixir_style_guide][Elixir Style Guide]]
-
-*** JavaScript
-
-- ES2020+ syntax
-- Prefer =const= over =let=
-- Arrow functions for callbacks
-- Use ESLint (standard rules)
-
-*** Documentation
-
-- Use =.org= files, not =.md=
-- Exception: =.llm/claude.md= (for Claude Code)
-- Why: Team uses Emacs
-
-** Useful Links
-
-*** Curupira
-
-- Repo: =file:~/personal/curupira/=
-- Main README: [[file:~/personal/curupira/readme.org][readme.org]]
-
-*** ElixirScript (Original)
-
-- GitHub: https://github.com/elixirscript/elixirscript
-- Docs: https://hexdocs.pm/elixir_script/
-- Last release: v0.32.1 (2018-03-17)
-
-*** Elixir
-
-- Changelog: https://github.com/elixir-lang/elixir/blob/main/CHANGELOG.md
-- v1.17: https://elixir-lang.org/blog/2024/06/12/elixir-v1-17-0-released/
-- v1.18: https://elixir-lang.org/blog/2024/12/19/elixir-v1-18-0-released/
-- Docs: https://hexdocs.pm/elixir/
-
-*** JavaScript
-
-- ESTree: https://github.com/estree/estree
-- Elixir ESTree: https://github.com/elixirscript/elixir-estree
-
-** Debugging Tips
-
-*** Compilation Fails
-
-#+begin_src shell
-# Check versions
-elixir --version  # Need 1.17+
-erl -version      # Need OTP 26+
-
-# Clean and retry
-rm -rf _build deps
-mix deps.get
+# Run specific test suite
+mix test test/curupira_js_test.exs
+mix test test/ffi_test.exs
+mix test test/integration_test.exs
+
+# Compile the package
 mix compile
 #+end_src
 
-*** Tests Fail
+** curupira_web (packages/curupira_web)
 
-1. Read error message carefully
-2. Check if feature needs newer Elixir
-3. Check if ElixirScript didn't support it
-4. Document as known limitation if needed
+#+begin_src shell
+cd packages/curupira_web
 
-*** Generated JS is Wrong
+# Run tests (all should pass)
+mix test
 
-1. Check =priv/javascript/lib/= for runtime implementation
-2. Compare with Elixir behavior in IEx
-3. Add test case
-4. Fix runtime or compiler
+# Compile
+mix compile
+#+end_src
 
-** Next Steps (Priority Order)
+** Using in an App
 
-1. *Clone ElixirScript* as reference into =packages/curupira_script/reference/=
-2. *Study & document* BEAM AST extraction
-3. *Study & document* translation pipeline
-4. *Study & document* pattern matching (Tailored library)
-5. *Document* hard problems (trampolining, protocols, etc.)
-6. *Plan implementation* (what to steal vs rebuild)
-7. *Create* fresh project structure
+#+begin_src shell
+cd packages/test_app  # or your app directory
 
-After Phase 0:
-8. Build core compiler pipeline
-9. Add pattern matching (Tailored)
-10. Implement basic runtime
-11. Add modern Elixir features
+# Get dependencies
+mix deps.get
 
-See =design.org= for full roadmap and [[file:todo.org][todo.org]] for detailed tasks.
+# Build JavaScript
+mix curupira_js.build
 
-** Emergency Contacts
+# Watch mode (auto-recompile on changes)
+mix curupira_js.watch
 
-If something is unclear:
-1. Check =design.org= (technical details)
-2. Check =decisions.org= (rationale)
-3. Read ElixirScript source (git history)
-4. Ask the user
+# Serve HTML
+python3 -m http.server 8000
+# Visit http://localhost:8000/html/
+#+end_src
 
-** Files to Update
+* 📦 Package Details
 
-When making changes, update these:
+** curupira_js Features
 
-*** Always
+*** Phase 1: Core Compiler (100%)
+- BEAM debug_info extraction
+- Pattern matching
+- Functions & modules
+- Control flow (if, case, cond)
+- Data types (atoms, tuples, lists, maps)
+- Pipes & composition
+- String interpolation
 
-- Tests (add for new features)
-- =changelog.org= (document changes)
+*** Phase 2: Modern Elixir (100%)
+- Stepped ranges (1..10//2)
+- then/2 and tap/2
+- is_non_struct_map/1 guard
+- Duration type (full support)
 
-*** When Changing API
+*** Phase 3: Stdlib & FFI (100%)
+- HTTP client (fetch-based)
+- JSON encode/decode
+- Generic FFI system
+- Struct wrappers (__ref__ pattern)
 
-- =packages/curupira_script/readme.org=
-- =.llm/design.org=
-- Examples (when we have them)
+*** Phase 4: Tooling (100%)
+- Mix compiler integration
+- mix curupira_js.build task
+- mix curupira_js.watch task
+- JavaScript bundler
+- Source maps (v3 format)
+- Dependency resolution
 
-*** When Making Decisions
+** curupira_web Features
 
-- =.llm/decisions.org=
-- =.llm/claude.md= (if major change)
+*** DOM Structs (6)
+- Element (base)
+- Input (with type, value, checked)
+- Button (with disabled)
+- Canvas (with width/height)
+- Form (with action/method)
+- Event (with all properties)
 
-** Remember
+*** DOM Functions (35+)
+- Query: query_selector, query_selector_all, get_by_id
+- Creation: create_element
+- Text: set_inner_text, set_inner_html
+- Attributes: set_attribute, get_attribute
+- Classes: add_class, remove_class, toggle_class, has_class?
+- Styles: set_style, set_styles
+- Tree: append_child, append_below, remove, get_children
+- Focus: focus, blur, scroll_to
+- Dataset: set_dataset, get_dataset
+- Checkboxes: get_checkbox_by_id, switch_checkbox
 
-- Small incremental changes
-- Test everything
-- Document decisions
-- Keep =.org= format (not =.md=)
-- Ask if unsure
+*** Event Handling (16 functions)
+Handlers (12):
+- add_event_listener, remove_event_listener
+- on_click, on_change, on_input, on_submit
+- on_keydown, on_keyup
+- on_mouseenter, on_mouseleave
+- on_focus, on_blur
+
+Utilities (4):
+- prevent_default, stop_propagation
+- get_event_value, get_event_checked
+
+** curupira_template
+
+Updated template using curupira_js + curupira_web:
+- Modern HTML with embedded CSS
+- Example app with DOM manipulation
+- Event handling examples
+- No webpack/npm needed!
+
+* 📝 Common Code Patterns
+
+** Basic DOM Manipulation
+
+#+begin_src elixir
+defmodule MyApp do
+  alias CurupiraWeb.DOM
+
+  def main do
+    # Query elements
+    {:ok, app} = DOM.query_selector("#app")
+
+    # Create elements
+    {:ok, button} = DOM.create_element("button")
+    button = DOM.set_inner_text(button, "Click me!")
+    button = DOM.add_class(button, "btn-primary")
+
+    # Add event handlers
+    button = DOM.on_click(button, fn event ->
+      DOM.prevent_default(event)
+      IO.puts("Button clicked!")
+    end)
+
+    # Append to DOM
+    DOM.append_child(app, button)
+  end
+end
+#+end_src
+
+** FFI (Calling JavaScript)
+
+#+begin_src elixir
+defmodule MyApp.Console do
+  use CurupiraJS.FFI
+
+  # Call existing JS function
+  ffi :log,
+    js_path: "console.log",
+    args: [:any],
+    returns: :ok
+
+  # Custom JS code
+  ffi :greet,
+    args: [:string],
+    returns: :string,
+    js: """
+    (name) => {
+      return `Hello, ${name}!`;
+    }
+    """
+
+  # With struct wrapper
+  ffi :query_element,
+    args: [:string],
+    returns: {:option, MyElement.t()},
+    wrapper: true,
+    js: """
+    (selector) => {
+      const el = document.querySelector(selector);
+      if (!el) return null;
+      return {
+        id: el.id,
+        __ref__: el
+      };
+    }
+    """
+end
+#+end_src
+
+** HTTP Requests
+
+#+begin_src elixir
+defmodule MyApp.API do
+  alias CurupiraJS.HTTP
+
+  def fetch_users do
+    case HTTP.get("https://api.example.com/users") do
+      {:ok, response} ->
+        IO.inspect(response.status)
+        IO.inspect(response.body)
+        {:ok, response}
+
+      {:error, reason} ->
+        IO.puts("Request failed: #{reason}")
+        {:error, reason}
+    end
+  end
+
+  def create_user(data) do
+    HTTP.post("https://api.example.com/users",
+      body: JSON.encode!(data),
+      headers: %{"Content-Type" => "application/json"}
+    )
+  end
+end
+#+end_src
+
+* 🏛️ Architecture
+
+** Compilation Flow
+
+#+begin_example
+User's .ex files
+    ↓
+mix compile (triggers curupira_js compiler)
+    ↓
+List.wrap entry modules
+    ↓
+DependencyWalker (find all used modules)
+    ↓
+Extract BEAM debug_info (abstract_code)
+    ↓
+Compiler.compile (each module)
+    ↓
+Translator (Elixir AST → ESTree)
+    ↓
+ESTree.encode (ESTree → JavaScript string)
+    ↓
+Bundler (combine into single file)
+    ↓
+Write to output file (priv/static/js/app.js)
+#+end_example
+
+** Key Files
+
+*** curupira_js
+- =lib/curupira_js/compiler.ex= - Main orchestrator
+- =lib/curupira_js/translator.ex= - AST translation
+- =lib/curupira_js/bundler.ex= - JavaScript bundling
+- =lib/curupira_js/ffi.ex= - FFI system
+- =lib/mix/compilers/curupira_js.ex= - Mix integration
+
+*** curupira_web
+- =lib/curupira_web/dom.ex= - 35+ DOM functions (all FFI)
+- =lib/curupira_web/dom/*.ex= - Struct definitions
+
+* 🐛 Troubleshooting
+
+** Tests Failing
+
+#+begin_src shell
+# Run single test
+mix test test/file_test.exs:42
+
+# Clean and recompile
+mix clean && mix compile
+
+# Check Elixir version (need 1.17+)
+elixir --version
+#+end_src
+
+** Compilation Errors
+
+Common issues:
+- Missing dependencies: =mix deps.get=
+- Stale build: =mix clean=
+- Wrong Elixir version: Need 1.17+
+
+** JavaScript Output Issues
+
+1. Check translator.ex for that Elixir construct
+2. Look at generated bundle (output file)
+3. Add IO.inspect to debug Elixir values
+4. Write a minimal test case
+
+* 🎯 What's Next?
+
+While complete, potential enhancements:
+
+** Phase 5: More Features
+- More DOM APIs (localStorage, WebSocket, etc.)
+- Canvas drawing methods
+- Animation (requestAnimationFrame)
+- More element types (textarea, select, etc.)
+
+** Developer Experience
+- Better error messages
+- Improved source maps (VLQ mappings)
+- Performance optimization
+- TypeScript definitions
+
+** Documentation
+- Tutorial
+- API reference
+- More examples
+- Migration guide
+
+* 📚 Key Resources
+
+** Our Code
+- =packages/curupira_script/= - Compiler
+- =packages/curupira_web/= - DOM bindings
+- =packages/curupira_template/= - Project template
+- =packages/test_app/= - Working example
+
+** Documentation
+- =.llm/claude.md= - Main context (START HERE)
+- =.llm/design.org= - Technical details (may be outdated)
+- =.llm/decisions.org= - Architecture decisions
+- =readme.org= - Project README
+
+** External
+- Elixir Changelog: https://github.com/elixir-lang/elixir/blob/main/CHANGELOG.md
+- ESTree Spec: https://github.com/estree/estree
+- MDN Web Docs: https://developer.mozilla.org/
+
+* 💡 Tips
+
+** For Development
+- Write tests first (TDD)
+- Keep changes small
+- Run full test suite before committing
+- Update docs when behavior changes
+
+** For Debugging
+- Read error messages carefully
+- Check translator.ex for unsupported features
+- Look at generated JavaScript
+- Compare with working examples
+
+** For New Features
+1. Add test in appropriate test file
+2. Implement in translator/compiler/FFI
+3. Verify test passes
+4. Check no regressions
+5. Update documentation
 
 ---
 
-Last Updated: 2025-11-27
-Next Review: After Phase 0 completion
+*Last Updated:* 2025-12-02
+*Status:* ✅ Production Ready - All tests passing!
