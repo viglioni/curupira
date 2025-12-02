@@ -47,7 +47,7 @@ defmodule Mix.Compilers.CurupiraJs do
 
     if config && config[:input] do
       # Get configuration
-      entry_modules = config[:input]
+      entry_modules = List.wrap(config[:input])
       output_path = config[:output] || "js/elixir_bundle.js"
 
       # Check if we need to rebuild

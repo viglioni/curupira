@@ -61,8 +61,12 @@ defmodule Mix.Tasks.CurupiraJs.Watch do
     Mix.shell().info("")
 
     # Start file watcher
-    {:ok, pid} = FileSystem.start_link(dirs: watch_directories)
-    FileSystem.subscribe(pid)
+    unless Code.ensure_loaded?(FileSystem) do
+      Mix.raise("FileSystem is required for watch mode. Add {:file_system, \"~> 1.0\"} to your deps.")
+    end
+
+    {:ok, pid} = apply(FileSystem, :start_link, [[dirs: watch_directories]])
+    apply(FileSystem, :subscribe, [pid])
 
     # Keep process alive and handle file events
     receive_loop()

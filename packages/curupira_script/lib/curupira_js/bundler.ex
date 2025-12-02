@@ -99,8 +99,15 @@ defmodule CurupiraJS.Bundler do
 
     # If there's only one top-level key, unwrap it for cleaner access
     # So {Fixtures: {Simple: {}, WithArgs: {}}} becomes {Simple: {}, WithArgs: {}}
+    # But if unwrapping results in a single module, keep the tree structure
     unwrapped_tree = case Map.keys(nested_tree) do
-      [single_key] -> Map.get(nested_tree, single_key)
+      [single_key] ->
+        value = Map.get(nested_tree, single_key)
+        # If the value is a module tuple, keep the original tree
+        case value do
+          {:module, _content} -> nested_tree
+          subtree when is_map(subtree) -> subtree
+        end
       _ -> nested_tree
     end
 

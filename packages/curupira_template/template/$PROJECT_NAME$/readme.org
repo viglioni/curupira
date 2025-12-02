@@ -1,28 +1,99 @@
 #+title: <%= @project_name_camel_case %>
 
+A client-side application built with *CurupiraJS* - compile Elixir to JavaScript!
 
-First you need to install everything, inside your project:
+* Getting Started
 
-#+begin_src shell :exports both :results output 
+** Installation
+
+First, install dependencies:
+
+#+begin_src shell
   mix deps.get
-  npm i # yes, of course you must have npm installed
 #+end_src
 
-Then
+** Building
 
-#+begin_src shell :exports both :results output 
-  mix watch.compile # this will open your project on the port on config.exs
-  # this will watch your elixir files for changes and then compile.
-  # might get slow if your project gets too big... in this case you can run the `mix compile` manually and only run the frontend with `npm run dev`
+Compile your Elixir code to JavaScript:
+
+#+begin_src shell
+  mix curupira_js.build
 #+end_src
 
-Unfortunatelly, when you kill the =watch.compile= it does not kill the frontend project, to do that you can use =mix port.kill=.
+This will compile your Elixir modules into =priv/static/js/app.js=
 
+** Development
 
-The frontend project will execute the function = =<%= @project_name_camel_case %>.main()=
+For development with automatic recompilation on file changes:
 
-You can add the styles in =styles/main.scss=
+#+begin_src shell
+  mix curupira_js.watch
+#+end_src
 
-All html files in =html/=.
+Then open =html/index.html= in your browser (you can use a simple HTTP server):
 
-If you need to add extra JS, check =js/index.js=.
+#+begin_src shell
+  # Using Python
+  python3 -m http.server 8000
+  # Then visit http://localhost:8000/html/
+
+  # Or using Node.js
+  npx http-server -p 8000
+  # Then visit http://localhost:8000/html/
+#+end_src
+
+* Project Structure
+
+- =lib/<%= @project_name %>.ex= - Your main application module
+- =html/= - HTML files for your application
+- =priv/static/js/= - Compiled JavaScript output (generated)
+- =test/= - Your test files
+
+* How It Works
+
+1. Write Elixir code using =CurupiraWeb.DOM= for DOM manipulation
+2. Compile with =mix curupira_js.build=
+3. Your Elixir code is transpiled to JavaScript
+4. The =<%= @project_name_camel_case %>.main()= function is called when the page loads
+
+* DOM Manipulation
+
+Use =CurupiraWeb.DOM= to interact with the browser:
+
+#+begin_src elixir
+  alias CurupiraWeb.DOM
+
+  # Query elements
+  {:ok, element} = DOM.query_selector("#app")
+
+  # Create elements
+  {:ok, button} = DOM.create_element("button")
+  button = DOM.set_inner_text(button, "Click me!")
+
+  # Add event listeners
+  button = DOM.on_click(button, fn event ->
+    IO.puts("Clicked!")
+  end)
+
+  # Append to DOM
+  element = DOM.append_child(element, button)
+#+end_src
+
+* Available Mix Tasks
+
+- =mix curupira_js.build= - Compile Elixir to JavaScript (one-time)
+- =mix curupira_js.watch= - Watch for changes and auto-compile
+- =mix test= - Run your tests
+
+* Next Steps
+
+1. Edit =lib/<%= @project_name %>.ex= to build your application
+2. Add more modules as needed
+3. Use =CurupiraWeb.DOM= for all DOM manipulation
+4. Check the CurupiraJS documentation for more features:
+   - Event handling
+   - HTTP requests
+   - Form manipulation
+   - And more!
+
+Happy coding! 🚀

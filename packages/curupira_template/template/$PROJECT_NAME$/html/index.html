@@ -2,11 +2,109 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= @project_name_camel_case %></title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      #app {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      .title {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+
+      .subtitle {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: block;
+        margin: 2rem auto;
+        font-weight: 600;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .message {
+        background: #f0f4f8;
+        padding: 1rem;
+        border-radius: 6px;
+        text-align: center;
+        color: #555;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 640px) {
+        #app {
+          padding: 24px;
+        }
+
+        .title {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
   </head>
 
   <body>
-    <h1>hello there!</h1>
-    <h2><%= @project_name_camel_case %>, you are a bold one</h2>
+    <!-- Application mount point -->
+    <div id="app">
+      <p style="text-align: center; color: #999;">Loading...</p>
+    </div>
+
+    <!-- Load the compiled JavaScript bundle -->
+    <script src="../priv/static/js/app.js"></script>
+    <script>
+      // Initialize the application
+      if (typeof <%= @project_name_camel_case %> !== 'undefined' && typeof <%= @project_name_camel_case %>.main === 'function') {
+        <%= @project_name_camel_case %>.main();
+      } else {
+        console.error('<%= @project_name_camel_case %> module not found. Make sure to compile with: mix curupira_js.build');
+      }
+    </script>
   </body>
 </html>
